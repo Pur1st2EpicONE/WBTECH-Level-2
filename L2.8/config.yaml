@@ -1,0 +1,6 @@
+server: "time.google.com"      # The NTP server address to fetch time from
+show_all: false                # If true, displays all available time fields and overrides the individual field settings below
+show_date: false               # Whether to display the date 
+show_precise_time: false       # Whether to display the time with nanoseconds
+show_offset: false             # Whether to display the timezone offset from UTC
+show_time_zone: true           # Whether to display the timezone name
