@@ -1,12 +1,16 @@
-.PHONY: all L2.10 test lint
+.PHONY: all L2.10 test diff_test lint
 
 all : L2.10
 
 L2.10:
-	@go run main.go
+	@go build -o sort ./cmd/sort/main.go
 
 test:
-	@bash script.sh
+	go test ./internal/sorter -v
+	go test ./internal/comparator -v
+
+diff_test:
+	@bash diff_tests.sh
 
 lint:
 	golangci-lint run ./...
