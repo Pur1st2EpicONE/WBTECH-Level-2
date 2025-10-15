@@ -2,10 +2,8 @@ package main
 
 import (
 	"fmt"
-	"maps"
-	"sort"
+	"slices"
 	"strings"
-	"unicode/utf8"
 )
 
 func main() {
@@ -15,66 +13,38 @@ func main() {
 
 }
 
+// groupAnagrams returns a map of anagram groups from a slice of words.
+// Key is the first word in lowercase; value is a sorted slice of all words in the group.
 func groupAnagrams(words []string) map[string][]string {
 
-	if len(words) < 2 {
-		return nil
+	groups := make(map[[33]byte][]string)
+	for _, word := range words {
+		word = strings.ToLower(word)
+		key := makeHistogram(word)
+		groups[key] = append(groups[key], word)
 	}
 
-	sort.Strings(words)
-
-	res := make(map[string][]string)
-	processed := make(map[string]struct{})
-
-	for _, word := range words {
-		if _, ok := processed[word]; !ok {
-			if notSingle := (len(getAnagrams(processed, word, words)) > 1); notSingle {
-				res[strings.ToLower(word)] = getAnagrams(processed, word, words)
-			}
+	result := make(map[string][]string)
+	for _, group := range groups {
+		slices.Sort(group)
+		group = slices.Compact(group)
+		if len(group) > 1 {
+			result[group[0]] = group
 		}
 	}
 
-	return res
+	return result
 
 }
 
-func getAnagrams(processed map[string]struct{}, word string, words []string) []string {
-
-	var res []string
-	hm := make(map[rune]int)
-
-	for _, char := range word {
-		hm[char]++
+// makeHistogram creates a letter histogram for a word.
+// It returns an array of length 33, where each element corresponds
+// to a letter of the Russian alphabet ('а'–'я') and stores
+// the number of occurrences of that letter in the word.
+func makeHistogram(word string) [33]byte {
+	var key [33]byte
+	for _, letter := range word {
+		key[letter-'а']++
 	}
-
-	for _, currentWord := range words {
-
-		copyMap := make(map[rune]int)
-		maps.Copy(copyMap, hm)
-
-		valid := true
-		for _, ch := range currentWord {
-
-			if utf8.RuneCountInString(currentWord) != utf8.RuneCountInString(word) {
-				valid = false
-				break
-			}
-
-			copyMap[ch]--
-			if copyMap[ch] < 0 {
-				valid = false
-				break
-			}
-
-		}
-
-		if valid {
-			res = append(res, strings.ToLower(currentWord))
-			processed[currentWord] = struct{}{}
-		}
-
-	}
-
-	return res
-
+	return key
 }
