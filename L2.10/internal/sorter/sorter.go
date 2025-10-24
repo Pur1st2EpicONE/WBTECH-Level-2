@@ -23,8 +23,9 @@ import (
 )
 
 const (
-	inputNotSorted = 1
-	internalError  = 2
+	inputNotSorted   = 1
+	internalError    = 2
+	defaultChunkSize = 1000
 )
 
 // Data represents the complete context of a sorting operation,
@@ -76,11 +77,12 @@ func processInput() (*Data, error) {
 
 	data := &Data{Sorted: true}
 
-	config, err := config.Load()
-	if err != nil {
-		return data, fmt.Errorf("unable to process input: %w", err)
+	cfg, err := config.Load()
+	if err != nil || cfg.ChunkSize < 1 {
+		data.Config = &config.Config{ChunkSize: defaultChunkSize}
+	} else {
+		data.Config = cfg
 	}
-	data.Config = config
 
 	flags, err := flags.Parse()
 	if err != nil {

@@ -1,2 +1,2 @@
-chunk_size: 1000     # Number of lines per chunk (be mindful not to set this value too high, as each chunk is initially stored in memory)
-workers:             # Number of concurrent workers that sort chunks (defaults to GOMAXPROCS if left empty)
+chunk_size: 1000     # Number of lines per chunk (defaults to 1000 if unset or if no config file is present). Large values increase memory usage.
+workers:             # Number of concurrent workers that sort chunks (defaults to GOMAXPROCS if unset or if no config file is present).
