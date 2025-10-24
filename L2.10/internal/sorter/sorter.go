@@ -76,6 +76,12 @@ func processInput() (*Data, error) {
 
 	data := &Data{Sorted: true}
 
+	config, err := config.Load()
+	if err != nil {
+		return data, fmt.Errorf("unable to process input: %w", err)
+	}
+	data.Config = config
+
 	flags, err := flags.Parse()
 	if err != nil {
 		return data, fmt.Errorf("failed to parse flags: %w", err)
@@ -98,12 +104,6 @@ func processFiles(data *Data, files []string) error {
 
 		data.FileName = files[i]
 
-		config, err := config.Load()
-		if err != nil {
-			return fmt.Errorf("unable to process %s file: %w", files[i], err)
-		}
-		data.Config = config
-
 		file, err := os.Open(data.FileName)
 		if err != nil {
 			return err // intentionally not wrapped: the error is handled by logFatal, which formats it in the style of GNU sort using errors.Is checks.
@@ -125,12 +125,6 @@ func processFiles(data *Data, files []string) error {
 
 // processStdIn processes standard input when no files are provided.
 func processStdIn(data *Data) error {
-
-	config, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("unable to process input: %w", err)
-	}
-	data.Config = config
 
 	if err := processData(data, bufio.NewScanner(os.Stdin)); err != nil {
 		return err // intentionally not wrapped: the error is handled by logFatal, which formats it in the style of GNU sort using errors.Is checks.
