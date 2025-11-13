@@ -1,0 +1,23 @@
+# Concurrency settings
+async: true                     # Enable asynchronous downloading
+parallelism: 5                  # Maximum number of concurrent requests
+delay: 500ms                    # Fixed delay between requests
+random_delay: 200ms             # Upper bound for randomized backoff delay
+
+# Request settings
+user_agent: RealPerson/1.0      # User-Agent string to send with requests
+request_timeout: 15m            # Timeout for each HTTP request
+ignore_robots_txt: false        # Whether to ignore robots.txt rules
+
+# Download options
+download_html: true             # Download HTML pages
+download_css: true              # Download CSS files
+download_fonts: true            # Download font files referenced in CSS
+download_scripts: true          # Download JavaScript files
+download_images: true           # Download images
+download_videos: true           # Download video files
+download_audio: true            # Download audio files
+download_iframes: true          # Download content of iframe sources
+download_icons: true            # Download favicon and shortcut icons
+download_manifests: true        # Download web app manifest files
+download_json: true             # Download JSON resources
