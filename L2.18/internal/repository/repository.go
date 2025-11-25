@@ -1,8 +1,6 @@
 package repository
 
 import (
-	"time"
-
 	"L2.18/internal/config"
 	"L2.18/internal/models"
 	"L2.18/internal/repository/memory"
@@ -10,12 +8,12 @@ import (
 )
 
 type Storage interface {
-	CreateEvent(e *models.Event) error
-	UpdateEvent(e *models.Event) error
-	DeleteEvent(int, time.Time, string) error
-	GetEventsForDay(userID int, date time.Time) ([]*models.Event, error)
-	GetEventsForWeek(userID int, date time.Time) ([]*models.Event, error)
-	GetEventsForMonth(userID int, date time.Time) ([]*models.Event, error)
+	CreateEvent(data *models.Data) (string, error)
+	UpdateEvent(data *models.Data) error
+	DeleteEvent(meta *models.Meta) error
+	GetEventsForDay(meta *models.Meta) ([]models.Event, error)
+	GetEventsForWeek(meta *models.Meta) ([]models.Event, error)
+	GetEventsForMonth(meta *models.Meta) ([]models.Event, error)
 	Close() error
 }
 
