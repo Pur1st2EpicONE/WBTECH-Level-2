@@ -49,41 +49,41 @@ func (s *Storage) CreateEvent(d *models.Data) (string, error) {
 
 }
 
-func (s *Storage) UpdateEvent(d *models.Data) error {
+func (s *Storage) UpdateEvent(updated *models.Data) error {
 
-	currDate := format(d.Meta.EventDate)
-	newDate := format(d.Meta.UpdateDate)
+	currDate := format(updated.Meta.EventDate)
+	newDate := format(updated.Meta.NewDate)
 
-	allUserEvents, ok := s.db[d.Meta.UserID]
-	if !ok {
+	allUserEvents, userFound := s.db[updated.Meta.UserID]
+	if !userFound {
 		return fmt.Errorf("user not found")
 	}
 
-	dateEvents, ok := allUserEvents[currDate]
-	if !ok {
-		return fmt.Errorf("no events for this date found")
+	dayEvents, eventsFound := allUserEvents[currDate]
+	if !eventsFound {
+		return fmt.Errorf("no events found for this date")
 	}
 
-	for i, e := range dateEvents {
+	for i, current := range dayEvents {
 
-		if e.Meta.EventID == d.Meta.EventID {
+		if current.Meta.EventID == updated.Meta.EventID {
 
 			if currDate == newDate {
-				e.Event = d.Event
+				current.Event = updated.Event
 				return nil
 			}
 
-			copy(dateEvents[i:], dateEvents[i+1:])
-			dateEvents[len(dateEvents)-1] = nil
-			dateEvents = dateEvents[:len(dateEvents)-1]
+			copy(dayEvents[i:], dayEvents[i+1:])
+			dayEvents[len(dayEvents)-1] = nil
+			dayEvents = dayEvents[:len(dayEvents)-1]
 
-			if len(dateEvents) == 0 {
+			if len(dayEvents) == 0 {
 				delete(allUserEvents, currDate)
 			} else {
-				allUserEvents[currDate] = dateEvents
+				allUserEvents[currDate] = dayEvents
 			}
 
-			allUserEvents[newDate] = append(allUserEvents[newDate], d)
+			allUserEvents[newDate] = append(allUserEvents[newDate], updated)
 
 			return nil
 
@@ -104,23 +104,23 @@ func (s *Storage) DeleteEvent(m *models.Meta) error {
 		return fmt.Errorf("user not found")
 	}
 
-	dateEvents, eventsFound := allUserEvents[date]
+	dayEvents, eventsFound := allUserEvents[date]
 	if !eventsFound {
 		return fmt.Errorf("no events for this date found")
 	}
 
-	for i, e := range dateEvents {
+	for i, e := range dayEvents {
 
 		if e.Meta.EventID == m.EventID {
 
-			copy(dateEvents[i:], dateEvents[i+1:])
-			dateEvents[len(dateEvents)-1] = nil
-			dateEvents = dateEvents[:len(dateEvents)-1]
+			copy(dayEvents[i:], dayEvents[i+1:])
+			dayEvents[len(dayEvents)-1] = nil
+			dayEvents = dayEvents[:len(dayEvents)-1]
 
-			if len(dateEvents) == 0 {
+			if len(dayEvents) == 0 {
 				delete(allUserEvents, date)
 			} else {
-				allUserEvents[date] = dateEvents
+				allUserEvents[date] = dayEvents
 			}
 
 			s.userEventCount[m.UserID]--

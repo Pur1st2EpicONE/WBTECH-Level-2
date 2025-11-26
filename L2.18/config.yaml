@@ -1,0 +1,16 @@
+server:
+  port: "8080"
+  read_timeout: 5s
+  write_timeout: 10s
+  max_header_bytes: 1048576
+  shutdown_timeout: 15s
+
+app:
+  logger:
+    log_directory:
+    debug_mode: true
+
+storage:
+  max_users: 2
+  max_events_per_user: 3
+  max_events_per_day: 3

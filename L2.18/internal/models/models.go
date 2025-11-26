@@ -8,10 +8,10 @@ type Data struct {
 }
 
 type Meta struct {
-	EventID    string
-	UserID     int
-	EventDate  time.Time
-	UpdateDate time.Time
+	EventID   string
+	UserID    int
+	EventDate time.Time
+	NewDate   time.Time
 }
 
 type Event struct {

@@ -10,32 +10,36 @@ import (
 )
 
 type HttpServer struct {
-	Srv             *http.Server
-	ShutdownTimeout time.Duration
+	srv             *http.Server
+	shutdownTimeout time.Duration
+	logger          logger.Logger
 }
 
-func NewServer(config config.Server, handler http.Handler) *HttpServer {
+func NewServer(config config.Server, handler http.Handler, logger logger.Logger) *HttpServer {
 	server := new(HttpServer)
-	server.Srv = &http.Server{
+	server.srv = &http.Server{
 		Addr:           ":" + config.Port,
 		Handler:        handler,
 		ReadTimeout:    config.ReadTimeout,
 		WriteTimeout:   config.WriteTimeout,
 		MaxHeaderBytes: config.MaxHeaderBytes,
 	}
-	server.ShutdownTimeout = config.ShutdownTimeout
+	server.shutdownTimeout = config.ShutdownTimeout
+	server.logger = logger
 	return server
 }
 
-func (s *HttpServer) Run(ctx context.Context, logger logger.Logger) error {
-	logger.LogInfo("server — receiving requests", "layer", "server")
-	return s.Srv.ListenAndServe()
+func (s *HttpServer) Run() error {
+	s.logger.LogInfo("server — receiving requests", "layer", "server")
+	return s.srv.ListenAndServe()
 }
 
-func (s *HttpServer) Shutdown(ctx context.Context, logger logger.Logger) {
-	if err := s.Srv.Shutdown(ctx); err != nil {
-		logger.LogError("server — failed to shutdown gracefully", err, "layer", "server")
+func (s *HttpServer) Shutdown() {
+	ctx, cancel := context.WithTimeout(context.Background(), s.shutdownTimeout)
+	defer cancel()
+	if err := s.srv.Shutdown(ctx); err != nil {
+		s.logger.LogError("server — failed to shutdown gracefully", err, "layer", "server")
 	} else {
-		logger.LogInfo("server — shutdown complete", "layer", "server")
+		s.logger.LogInfo("server — shutdown complete", "layer", "server")
 	}
 }

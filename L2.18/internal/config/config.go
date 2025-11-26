@@ -36,7 +36,6 @@ type Logger struct {
 func Load() (App, error) {
 	if err := godotenv.Load(); err != nil {
 		return App{}, fmt.Errorf("godotenv — failed to %v", err)
-
 	}
 
 	viper.AddConfigPath(".")
@@ -46,8 +45,9 @@ func Load() (App, error) {
 	}
 
 	return App{
-		Server: srvConfig(),
-		Logger: loggerConfig(),
+		Server:  srvConfig(),
+		Logger:  loggerConfig(),
+		Storage: storageConfig(),
 	}, nil
 }
 
@@ -58,6 +58,14 @@ func srvConfig() Server {
 		WriteTimeout:    viper.GetDuration("server.write_timeout"),
 		MaxHeaderBytes:  viper.GetInt("server.max_header_bytes"),
 		ShutdownTimeout: viper.GetDuration("server.shutdown_timeout"),
+	}
+}
+
+func storageConfig() Storage {
+	return Storage{
+		MaxUsers:         viper.GetInt("storage.max_users"),
+		MaxEventsPerUser: viper.GetInt("storage.max_events_per_user"),
+		MaxEventsPerDay:  viper.GetInt("storage.max_events_per_day"),
 	}
 }
 

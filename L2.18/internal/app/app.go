@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -35,7 +37,7 @@ func Start() *App {
 	logger := logger.NewLogger(config.Logger)
 	ctx, cancel := newContext(logger)
 
-	server, storage := wireApp(config, logger)
+	server, storage := wireApp(nil, config, logger)
 	wg := new(sync.WaitGroup)
 
 	return &App{
@@ -65,11 +67,11 @@ func newContext(logger logger.Logger) (context.Context, context.CancelFunc) {
 
 }
 
-func wireApp(config config.App, logger logger.Logger) (server.Server, repository.Storage) {
-	storage := repository.NewStorage(config.Storage, logger)
+func wireApp(db any, config config.App, logger logger.Logger) (server.Server, repository.Storage) {
+	storage := repository.NewStorage(db, config.Storage, logger)
 	service := service.NewService(storage, logger)
-	handler := (handler.NewHandler(service, logger)).InitRoutes()
-	server := server.NewServer(config.Server, handler)
+	handler := handler.NewHandler(service, logger)
+	server := server.NewServer(config.Server, handler, logger)
 	return server, storage
 }
 
@@ -78,5 +80,14 @@ func (a App) Stop() {
 }
 
 func (a App) Run() {
-
+	a.wg.Add(1)
+	go func() {
+		defer a.wg.Done()
+		<-a.ctx.Done()
+		a.server.Shutdown()
+	}()
+	err := a.server.Run()
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		a.logger.LogFatal("app — server run failed", err, "layer", "app")
+	}
 }

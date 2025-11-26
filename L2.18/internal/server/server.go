@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"net/http"
 
 	"L2.18/internal/config"
@@ -10,10 +9,10 @@ import (
 )
 
 type Server interface {
-	Run(ctx context.Context, logger logger.Logger) error
-	Shutdown(ctx context.Context, logger logger.Logger)
+	Run() error
+	Shutdown()
 }
 
-func NewServer(cfg config.Server, handler http.Handler) Server {
-	return httpserver.NewServer(cfg, handler)
+func NewServer(config config.Server, handler http.Handler, logger logger.Logger) Server {
+	return httpserver.NewServer(config, handler, logger)
 }

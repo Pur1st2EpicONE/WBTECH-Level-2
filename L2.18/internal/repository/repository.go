@@ -17,6 +17,10 @@ type Storage interface {
 	Close() error
 }
 
-func NewStorage(config config.Storage, logger logger.Logger) Storage {
-	return memory.NewStorage(config, logger)
+func NewStorage(db any, config config.Storage, logger logger.Logger) Storage {
+	if db == nil {
+		return memory.NewStorage(config, logger)
+	} else {
+		panic("unsupported storage type")
+	}
 }
