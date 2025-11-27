@@ -1,49 +1,43 @@
 package v1
 
-import "time"
-
 type CreateRequestV1 struct {
-	UserID int    `json:"user_id" binding:"required"`
-	Text   string `json:"text" binding:"required"`
-	Date   string `json:"date" binding:"required"`
+	UserID    int    `json:"user_id" binding:"required"`
+	EventDate string `json:"event_date" binding:"required"`
+	Text      string `json:"text" binding:"required"`
 }
 
-type CreateEventResponseV1 struct {
+type CreateResponseV1 struct {
 	EventID string `json:"event_id"`
-	Status  string `json:"status"`
 }
 
-type UpdateEventRequestV1 struct {
-	UserID  int    `json:"user_id" binding:"required"`
-	EventID string `json:"event_id" binding:"required"`
-	Text    string `json:"text" binding:"required"`
-	Date    string `json:"date" binding:"required"`
+type UpdateRequestV1 struct {
+	UserID      int    `json:"user_id" binding:"required"`
+	EventID     string `json:"event_id" binding:"required"`
+	CurrentDate string `json:"current_date" binding:"required"`
+	NewDate     string `json:"new_date" binding:"required"`
+	Text        string `json:"text" binding:"required"`
 }
 
-type UpdateEventResponseV1 struct {
-	Status string `json:"status"`
+type UpdateResponseV1 struct {
+	Updated bool `json:"updated"`
 }
 
-type DeleteEventRequestV1 struct {
-	UserID  int    `json:"user_id" binding:"required"`
-	EventID string `json:"event_id" binding:"required"`
+type DeleteRequestV1 struct {
+	UserID    int    `json:"user_id" binding:"required"`
+	EventID   string `json:"event_id" binding:"required"`
+	EventDate string `json:"event_date" binding:"required"`
 }
 
-type DeleteEventResponseV1 struct {
-	Status string `json:"status"`
-}
-
-type ListEventsRequestV1 struct {
-	UserID int    `json:"user_id" binding:"required"`
-	Date   string `json:"date" binding:"required"`
+type DeleteResponseV1 struct {
+	Deleted bool `json:"deleted"`
 }
 
 type EventDtoV1 struct {
-	EventID string    `json:"event_id"`
-	Text    string    `json:"text"`
-	Date    time.Time `json:"date"`
+	UserID    int    `json:"user_id"`
+	EventDate string `json:"event_date"`
+	Text      string `json:"text"`
 }
 
-type ListEventsResponse struct {
+type ListOfEventsResponseV1 struct {
 	Events []EventDtoV1 `json:"events"`
 }

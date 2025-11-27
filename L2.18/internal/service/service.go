@@ -9,11 +9,11 @@ import (
 
 type Service interface {
 	CreateEvent(data *models.Data) (string, error)
-	// UpdateEvent(e *models.Event) error
-	// DeleteEvent(eventID int) error
-	// GetEventsForDay(userID int, date time.Time) ([]models.Event, error)
-	// GetEventsForWeek(userID int, date time.Time) ([]models.Event, error)
-	// GetEventsForMonth(userID int, date time.Time) ([]models.Event, error)
+	UpdateEvent(data *models.Data) error
+	DeleteEvent(meta *models.Meta) error
+	GetEventsForDay(meta *models.Meta) ([]models.Event, error)
+	GetEventsForWeek(meta *models.Meta) ([]models.Event, error)
+	GetEventsForMonth(meta *models.Meta) ([]models.Event, error)
 }
 
 func NewService(storage repository.Storage, logger logger.Logger) Service {

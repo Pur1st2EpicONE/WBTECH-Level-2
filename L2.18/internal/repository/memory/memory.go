@@ -36,7 +36,7 @@ func (s *Storage) CreateEvent(d *models.Data) (string, error) {
 		s.db[d.Meta.UserID] = make(map[string][]*models.Data)
 	}
 
-	eventDate := format(d.Meta.EventDate)
+	eventDate := format(d.Meta.NewDate)
 
 	if d.Meta.EventID == "" {
 		d.Meta.EventID = uuid.New().String()
@@ -51,7 +51,7 @@ func (s *Storage) CreateEvent(d *models.Data) (string, error) {
 
 func (s *Storage) UpdateEvent(updated *models.Data) error {
 
-	currDate := format(updated.Meta.EventDate)
+	currentDate := format(updated.Meta.CurrentDate)
 	newDate := format(updated.Meta.NewDate)
 
 	allUserEvents, userFound := s.db[updated.Meta.UserID]
@@ -59,7 +59,7 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 		return fmt.Errorf("user not found")
 	}
 
-	dayEvents, eventsFound := allUserEvents[currDate]
+	dayEvents, eventsFound := allUserEvents[currentDate]
 	if !eventsFound {
 		return fmt.Errorf("no events found for this date")
 	}
@@ -68,7 +68,7 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 
 		if current.Meta.EventID == updated.Meta.EventID {
 
-			if currDate == newDate {
+			if currentDate == newDate {
 				current.Event = updated.Event
 				return nil
 			}
@@ -78,9 +78,9 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 			dayEvents = dayEvents[:len(dayEvents)-1]
 
 			if len(dayEvents) == 0 {
-				delete(allUserEvents, currDate)
+				delete(allUserEvents, currentDate)
 			} else {
-				allUserEvents[currDate] = dayEvents
+				allUserEvents[currentDate] = dayEvents
 			}
 
 			allUserEvents[newDate] = append(allUserEvents[newDate], updated)
@@ -95,11 +95,11 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 
 }
 
-func (s *Storage) DeleteEvent(m *models.Meta) error {
+func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
-	date := format(m.EventDate)
+	date := format(meta.CurrentDate)
 
-	allUserEvents, userFound := s.db[m.UserID]
+	allUserEvents, userFound := s.db[meta.UserID]
 	if !userFound {
 		return fmt.Errorf("user not found")
 	}
@@ -111,7 +111,7 @@ func (s *Storage) DeleteEvent(m *models.Meta) error {
 
 	for i, e := range dayEvents {
 
-		if e.Meta.EventID == m.EventID {
+		if e.Meta.EventID == meta.EventID {
 
 			copy(dayEvents[i:], dayEvents[i+1:])
 			dayEvents[len(dayEvents)-1] = nil
@@ -123,7 +123,7 @@ func (s *Storage) DeleteEvent(m *models.Meta) error {
 				allUserEvents[date] = dayEvents
 			}
 
-			s.userEventCount[m.UserID]--
+			s.userEventCount[meta.UserID]--
 
 			return nil
 
@@ -142,7 +142,7 @@ func (s *Storage) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
 		return []models.Event{}, nil
 	}
 
-	dayEvents, eventsFound := allUserEvents[format(meta.EventDate)]
+	dayEvents, eventsFound := allUserEvents[format(meta.CurrentDate)]
 	if !eventsFound {
 		return []models.Event{}, nil
 	}
@@ -164,11 +164,11 @@ func (s *Storage) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
 	}
 
 	var res []models.Event
-	year, week := meta.EventDate.ISOWeek()
+	year, week := meta.CurrentDate.ISOWeek()
 
 	for _, dayEvents := range allUserEvents {
 		for _, entry := range dayEvents {
-			entryYear, entryWeek := entry.Meta.EventDate.ISOWeek()
+			entryYear, entryWeek := entry.Meta.CurrentDate.ISOWeek()
 			if entryYear == year && entryWeek == week {
 				res = append(res, entry.Event)
 			}
@@ -187,13 +187,13 @@ func (s *Storage) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
 	}
 
 	var res []models.Event
-	month := meta.EventDate.Month()
-	year := meta.EventDate.Year()
+	month := meta.CurrentDate.Month()
+	year := meta.CurrentDate.Year()
 
 	for _, dayEvents := range allUserEvents {
 		for _, entry := range dayEvents {
-			entryMonth := entry.Meta.EventDate.Month()
-			entryYear := entry.Meta.EventDate.Year()
+			entryMonth := entry.Meta.CurrentDate.Month()
+			entryYear := entry.Meta.CurrentDate.Year()
 			if entryYear == year && entryMonth == month {
 				res = append(res, entry.Event)
 			}

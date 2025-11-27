@@ -6,8 +6,8 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func respondOK(c *gin.Context, result any) {
-	c.JSON(http.StatusOK, gin.H{"result": result})
+func respondOK(c *gin.Context, response any) {
+	c.JSON(http.StatusOK, gin.H{"result": response})
 }
 
 func respondBadRequest(c *gin.Context, err error) {

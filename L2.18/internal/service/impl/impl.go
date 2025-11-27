@@ -19,22 +19,22 @@ func (s *Service) CreateEvent(data *models.Data) (string, error) {
 	return s.Storage.CreateEvent(data)
 }
 
-// func (s *Service) GetEventsForDay(userID int, date time.Time) ([]models.Event, error) {
+func (s *Service) UpdateEvent(data *models.Data) error {
+	return s.Storage.UpdateEvent(data)
+}
 
-// }
+func (s *Service) DeleteEvent(meta *models.Meta) error {
+	return s.Storage.DeleteEvent(meta)
+}
 
-// func (s *Service) GetEventsForWeek(userID int, date time.Time) ([]models.Event, error) {
+func (s *Service) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
+	return s.Storage.GetEventsForDay(meta)
+}
 
-// }
+func (s *Service) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
+	return s.Storage.GetEventsForWeek(meta)
+}
 
-// func (s *Service) GetEventsForMonth(userID int, date time.Time) ([]models.Event, error) {
-
-// }
-
-// func (s *Service) UpdateEvent(e *models.Event) error {
-
-// }
-
-// func (s *Service) DeleteEvent(eventID int) error {
-
-// }
+func (s *Service) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
+	return s.Storage.GetEventsForMonth(meta)
+}
