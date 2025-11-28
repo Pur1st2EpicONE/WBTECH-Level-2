@@ -1,9 +1,7 @@
 package v1
 
 import (
-	"fmt"
-	"time"
-
+	"L2.18/internal/errs"
 	"L2.18/internal/models"
 	"L2.18/internal/service"
 	"L2.18/pkg/logger"
@@ -27,24 +25,24 @@ func (h *Handler) CreateEvent(c *gin.Context) {
 	var request CreateRequestV1
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		respondBadRequest(c, err)
+		respondError(c, errs.ErrInvalidJSON)
 		return
 	}
 
 	eventDates, err := validateDates(request.EventDate)
 	if err != nil {
-		respondBadRequest(c, fmt.Errorf("invalid date format, expected YYYY-MM-DD"))
+		respondError(c, errs.ErrInvalidDateFormat)
 		return
 	}
 
 	data := models.Data{
-		Meta:  models.Meta{UserID: request.UserID, NewDate: eventDates[0]},
+		Meta:  models.Meta{UserID: request.UserID, CurrentDate: eventDates[0]},
 		Event: models.Event{Text: request.Text},
 	}
 
 	eventID, err := h.service.CreateEvent(&data)
 	if err != nil {
-		respondInternalError(c, err)
+		respondError(c, err)
 		return
 	}
 
@@ -57,13 +55,13 @@ func (h *Handler) UpdateEvent(c *gin.Context) {
 	var request UpdateRequestV1
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		respondBadRequest(c, err)
+		respondError(c, errs.ErrInvalidJSON)
 		return
 	}
 
 	eventDates, err := validateDates(request.CurrentDate, request.NewDate)
 	if err != nil {
-		respondBadRequest(c, fmt.Errorf("invalid date format, expected YYYY-MM-DD"))
+		respondError(c, errs.ErrInvalidDateFormat)
 		return
 	}
 
@@ -73,7 +71,7 @@ func (h *Handler) UpdateEvent(c *gin.Context) {
 	}
 
 	if err := h.service.UpdateEvent(&data); err != nil {
-		respondInternalError(c, err)
+		respondError(c, err)
 		return
 	}
 
@@ -86,20 +84,20 @@ func (h *Handler) DeleteEvent(c *gin.Context) {
 	var request DeleteRequestV1
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		respondBadRequest(c, err)
+		respondError(c, errs.ErrInvalidJSON)
 		return
 	}
 
 	eventDates, err := validateDates(request.EventDate)
 	if err != nil {
-		respondBadRequest(c, fmt.Errorf("invalid date format, expected YYYY-MM-DD"))
+		respondError(c, errs.ErrInvalidDateFormat)
 		return
 	}
 
-	meta := models.Meta{UserID: request.UserID, CurrentDate: eventDates[0]}
+	meta := models.Meta{UserID: request.UserID, EventID: request.EventID, CurrentDate: eventDates[0]}
 
 	if err := h.service.DeleteEvent(&meta); err != nil {
-		respondInternalError(c, err)
+		respondError(c, err)
 		return
 	}
 
@@ -121,49 +119,24 @@ func (h *Handler) GetEventsForMonth(c *gin.Context) {
 
 func (h *Handler) getEvents(c *gin.Context, getFunc func(*models.Meta) ([]models.Event, error)) {
 
-	var request EventDtoV1
-
-	if err := c.ShouldBindJSON(&request); err != nil {
-		respondBadRequest(c, err)
+	userId, eventDates, err := validateQuery(c.Query("user_id"), c.Query("date"))
+	if err != nil {
+		respondError(c, err)
 		return
 	}
 
-	eventDates, err := validateDates(request.EventDate)
+	events, err := getFunc(&models.Meta{UserID: userId, CurrentDate: eventDates[0]})
 	if err != nil {
-		respondBadRequest(c, fmt.Errorf("invalid date format, expected YYYY-MM-DD"))
-		return
-	}
-
-	meta := models.Meta{UserID: request.UserID, CurrentDate: eventDates[0]}
-
-	events, err := getFunc(&meta)
-	if err != nil {
-		respondInternalError(c, err)
+		respondError(c, err)
 		return
 	}
 
 	respEvents := make([]EventDtoV1, len(events))
 
-	for i, event := range events {
-		respEvents[i] = EventDtoV1{
-			UserID:    request.UserID,
-			EventDate: request.EventDate,
-			Text:      event.Text,
-		}
+	for i, e := range events {
+		respEvents[i] = EventDtoV1{Text: e.Text}
 	}
 
 	respondOK(c, ListOfEventsResponseV1{Events: respEvents})
 
-}
-
-func validateDates(dates ...string) ([]time.Time, error) {
-	res := make([]time.Time, len(dates))
-	for i, date := range dates {
-		eventDate, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			return nil, err
-		}
-		res[i] = eventDate
-	}
-	return res, nil
 }

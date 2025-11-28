@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"L2.18/internal/config"
+	"L2.18/internal/errs"
 	"L2.18/internal/models"
 	"L2.18/pkg/logger"
 	"github.com/google/uuid"
@@ -29,14 +30,15 @@ func NewStorage(config config.Storage, logger logger.Logger) *Storage {
 func (s *Storage) CreateEvent(d *models.Data) (string, error) {
 
 	if s.userEventCount[d.Meta.UserID] >= s.maxEventsPerUser {
-		return "", fmt.Errorf("max events limit reached")
+		return "", fmt.Errorf("%w: user_id %d", errs.ErrMaxEvents, d.Meta.UserID)
+
 	}
 
 	if _, userExists := s.db[d.Meta.UserID]; !userExists {
 		s.db[d.Meta.UserID] = make(map[string][]*models.Data)
 	}
 
-	eventDate := format(d.Meta.NewDate)
+	eventDate := format(d.Meta.CurrentDate)
 
 	if d.Meta.EventID == "" {
 		d.Meta.EventID = uuid.New().String()
@@ -56,12 +58,12 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 
 	allUserEvents, userFound := s.db[updated.Meta.UserID]
 	if !userFound {
-		return fmt.Errorf("user not found")
+		return fmt.Errorf("%w: user_id %d", errs.ErrUserNotFound, updated.Meta.UserID)
 	}
 
 	dayEvents, eventsFound := allUserEvents[currentDate]
 	if !eventsFound {
-		return fmt.Errorf("no events found for this date")
+		return fmt.Errorf("%w: date %s", errs.ErrEventNotFound, currentDate)
 	}
 
 	for i, current := range dayEvents {
@@ -91,7 +93,7 @@ func (s *Storage) UpdateEvent(updated *models.Data) error {
 
 	}
 
-	return fmt.Errorf("event not found")
+	return fmt.Errorf("%w: event_id %s", errs.ErrEventNotFound, updated.Meta.EventID)
 
 }
 
@@ -101,12 +103,12 @@ func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
 	allUserEvents, userFound := s.db[meta.UserID]
 	if !userFound {
-		return fmt.Errorf("user not found")
+		return fmt.Errorf("%w: user_id %d", errs.ErrUserNotFound, meta.UserID)
 	}
 
 	dayEvents, eventsFound := allUserEvents[date]
 	if !eventsFound {
-		return fmt.Errorf("no events for this date found")
+		return fmt.Errorf("%w: date %s", errs.ErrEventNotFound, date)
 	}
 
 	for i, e := range dayEvents {
@@ -131,7 +133,7 @@ func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
 	}
 
-	return fmt.Errorf("event not found")
+	return fmt.Errorf("%w: event_id %s", errs.ErrEventNotFound, meta.EventID)
 
 }
 
@@ -174,7 +176,6 @@ func (s *Storage) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
 			}
 		}
 	}
-
 	return res, nil
 
 }

@@ -33,9 +33,7 @@ type DeleteResponseV1 struct {
 }
 
 type EventDtoV1 struct {
-	UserID    int    `json:"user_id"`
-	EventDate string `json:"event_date"`
-	Text      string `json:"text"`
+	Text string `json:"text"`
 }
 
 type ListOfEventsResponseV1 struct {
