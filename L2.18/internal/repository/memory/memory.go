@@ -1,140 +1,133 @@
 package memory
 
 import (
-	"fmt"
 	"time"
 
 	"L2.18/internal/config"
-	"L2.18/internal/errs"
 	"L2.18/internal/models"
 	"L2.18/pkg/logger"
 	"github.com/google/uuid"
 )
 
 type Storage struct {
-	db               map[int]map[string][]*models.Data
-	userEventCount   map[int]int
-	logger           logger.Logger
-	maxEventsPerUser int
+	db             map[int]map[string][]*models.Event
+	eventsByID     map[string]*models.Event
+	userEventCount map[int]int
+	logger         logger.Logger
 }
 
 func NewStorage(config config.Storage, logger logger.Logger) *Storage {
 	return &Storage{
-		db:               make(map[int]map[string][]*models.Data, config.MaxUsers),
-		userEventCount:   make(map[int]int),
-		logger:           logger,
-		maxEventsPerUser: config.MaxEventsPerUser,
+		db:             make(map[int]map[string][]*models.Event, config.MaxUsers),
+		eventsByID:     make(map[string]*models.Event, (config.MaxEventsPerUser * config.MaxUsers)),
+		userEventCount: make(map[int]int, config.MaxUsers),
+		logger:         logger,
 	}
 }
 
-func (s *Storage) CreateEvent(d *models.Data) (string, error) {
+func (s *Storage) CreateEvent(event *models.Event) (string, error) {
 
-	if s.userEventCount[d.Meta.UserID] >= s.maxEventsPerUser {
-		return "", fmt.Errorf("%w: user_id %d", errs.ErrMaxEvents, d.Meta.UserID)
-
+	if _, userExists := s.db[event.Meta.UserID]; !userExists {
+		s.db[event.Meta.UserID] = make(map[string][]*models.Event)
 	}
 
-	if _, userExists := s.db[d.Meta.UserID]; !userExists {
-		s.db[d.Meta.UserID] = make(map[string][]*models.Data)
+	eventDate := format(event.Meta.EventDate)
+	event.Meta.EventID = uuid.New().String()
+
+	s.db[event.Meta.UserID][eventDate] = append(s.db[event.Meta.UserID][eventDate], event)
+	s.userEventCount[event.Meta.UserID]++
+
+	if s.eventsByID == nil {
+		s.eventsByID = make(map[string]*models.Event)
 	}
+	s.eventsByID[event.Meta.EventID] = event
 
-	eventDate := format(d.Meta.CurrentDate)
-
-	if d.Meta.EventID == "" {
-		d.Meta.EventID = uuid.New().String()
-	}
-
-	s.db[d.Meta.UserID][eventDate] = append(s.db[d.Meta.UserID][eventDate], d)
-	s.userEventCount[d.Meta.UserID]++
-
-	return d.Meta.EventID, nil
+	return event.Meta.EventID, nil
 
 }
 
-func (s *Storage) UpdateEvent(updated *models.Data) error {
+func (s *Storage) UpdateEvent(new *models.Event) error {
 
-	currentDate := format(updated.Meta.CurrentDate)
-	newDate := format(updated.Meta.NewDate)
+	current := s.eventsByID[new.Meta.EventID]
 
-	allUserEvents, userFound := s.db[updated.Meta.UserID]
-	if !userFound {
-		return fmt.Errorf("%w: user_id %d", errs.ErrUserNotFound, updated.Meta.UserID)
+	if current.Data != new.Data {
+		updateData(current, new)
 	}
 
-	dayEvents, eventsFound := allUserEvents[currentDate]
-	if !eventsFound {
-		return fmt.Errorf("%w: date %s", errs.ErrEventNotFound, currentDate)
-	}
+	if !new.Meta.NewDate.IsZero() && !new.Meta.NewDate.Equal(current.Meta.EventDate) {
 
-	for i, current := range dayEvents {
+		newDate := format(new.Meta.NewDate)
+		oldDate := format(current.Meta.EventDate)
 
-		if current.Meta.EventID == updated.Meta.EventID {
+		dayEvents := s.db[current.Meta.UserID][oldDate]
 
-			if currentDate == newDate {
-				current.Event = updated.Event
-				return nil
+		for i, e := range dayEvents {
+
+			if e.Meta.EventID == current.Meta.EventID {
+				copy(dayEvents[i:], dayEvents[i+1:])
+				dayEvents[len(dayEvents)-1] = nil
+				dayEvents = dayEvents[:len(dayEvents)-1]
+				break
 			}
-
-			copy(dayEvents[i:], dayEvents[i+1:])
-			dayEvents[len(dayEvents)-1] = nil
-			dayEvents = dayEvents[:len(dayEvents)-1]
-
-			if len(dayEvents) == 0 {
-				delete(allUserEvents, currentDate)
-			} else {
-				allUserEvents[currentDate] = dayEvents
-			}
-
-			allUserEvents[newDate] = append(allUserEvents[newDate], updated)
-
-			return nil
 
 		}
 
+		if len(dayEvents) == 0 {
+			delete(s.db[current.Meta.UserID], oldDate)
+		} else {
+			s.db[current.Meta.UserID][oldDate] = dayEvents
+		}
+
+		current.Meta.EventDate = new.Meta.NewDate
+		s.db[current.Meta.UserID][newDate] = append(s.db[current.Meta.UserID][newDate], current)
+
 	}
 
-	return fmt.Errorf("%w: event_id %s", errs.ErrEventNotFound, updated.Meta.EventID)
+	return nil
 
 }
 
 func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
-	date := format(meta.CurrentDate)
+	current := s.eventsByID[meta.EventID]
+	date := format(current.Meta.EventDate)
 
-	allUserEvents, userFound := s.db[meta.UserID]
-	if !userFound {
-		return fmt.Errorf("%w: user_id %d", errs.ErrUserNotFound, meta.UserID)
-	}
-
-	dayEvents, eventsFound := allUserEvents[date]
-	if !eventsFound {
-		return fmt.Errorf("%w: date %s", errs.ErrEventNotFound, date)
-	}
+	userID := current.Meta.UserID
+	dayEvents := s.db[userID][date]
 
 	for i, e := range dayEvents {
 
 		if e.Meta.EventID == meta.EventID {
-
 			copy(dayEvents[i:], dayEvents[i+1:])
 			dayEvents[len(dayEvents)-1] = nil
 			dayEvents = dayEvents[:len(dayEvents)-1]
-
-			if len(dayEvents) == 0 {
-				delete(allUserEvents, date)
-			} else {
-				allUserEvents[date] = dayEvents
-			}
-
-			s.userEventCount[meta.UserID]--
-
-			return nil
-
+			break
 		}
 
 	}
 
-	return fmt.Errorf("%w: event_id %s", errs.ErrEventNotFound, meta.EventID)
+	if len(dayEvents) == 0 {
+		delete(s.db[userID], date)
+	} else {
+		s.db[userID][date] = dayEvents
+	}
 
+	s.userEventCount[userID]--
+	delete(s.eventsByID, meta.EventID)
+
+	return nil
+
+}
+
+func (s *Storage) GetMetaByID(eventID string) *models.Meta {
+	if data, eventFound := s.eventsByID[eventID]; eventFound {
+		return &data.Meta
+	}
+	return nil
+}
+
+func (s *Storage) CountUserEvents(userID int) (int, error) {
+	return s.userEventCount[userID], nil
 }
 
 func (s *Storage) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
@@ -144,14 +137,14 @@ func (s *Storage) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
 		return []models.Event{}, nil
 	}
 
-	dayEvents, eventsFound := allUserEvents[format(meta.CurrentDate)]
+	dayEvents, eventsFound := allUserEvents[format(meta.EventDate)]
 	if !eventsFound {
 		return []models.Event{}, nil
 	}
 
 	res := make([]models.Event, len(dayEvents))
-	for i, e := range dayEvents {
-		res[i] = e.Event
+	for i, event := range dayEvents {
+		res[i] = *event
 	}
 
 	return res, nil
@@ -166,16 +159,17 @@ func (s *Storage) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
 	}
 
 	var res []models.Event
-	year, week := meta.CurrentDate.ISOWeek()
+	year, week := meta.EventDate.ISOWeek()
 
 	for _, dayEvents := range allUserEvents {
 		for _, entry := range dayEvents {
-			entryYear, entryWeek := entry.Meta.CurrentDate.ISOWeek()
+			entryYear, entryWeek := entry.Meta.EventDate.ISOWeek()
 			if entryYear == year && entryWeek == week {
-				res = append(res, entry.Event)
+				res = append(res, *entry)
 			}
 		}
 	}
+
 	return res, nil
 
 }
@@ -188,15 +182,15 @@ func (s *Storage) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
 	}
 
 	var res []models.Event
-	month := meta.CurrentDate.Month()
-	year := meta.CurrentDate.Year()
+	month := meta.EventDate.Month()
+	year := meta.EventDate.Year()
 
 	for _, dayEvents := range allUserEvents {
 		for _, entry := range dayEvents {
-			entryMonth := entry.Meta.CurrentDate.Month()
-			entryYear := entry.Meta.CurrentDate.Year()
+			entryMonth := entry.Meta.EventDate.Month()
+			entryYear := entry.Meta.EventDate.Year()
 			if entryYear == year && entryMonth == month {
-				res = append(res, entry.Event)
+				res = append(res, *entry)
 			}
 		}
 	}
@@ -209,6 +203,12 @@ func (s *Storage) Close() error {
 	s.db = nil
 	s.userEventCount = nil
 	return nil
+}
+
+func updateData(current *models.Event, new *models.Event) {
+	if (new.Data.Text != "") && (new.Data.Text != current.Data.Text) {
+		current.Data.Text = new.Data.Text
+	}
 }
 
 func format(date time.Time) string {

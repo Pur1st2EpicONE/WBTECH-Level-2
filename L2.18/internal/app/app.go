@@ -69,7 +69,7 @@ func newContext(logger logger.Logger) (context.Context, context.CancelFunc) {
 
 func wireApp(db any, config config.App, logger logger.Logger) (server.Server, repository.Storage) {
 	storage := repository.NewStorage(db, config.Storage, logger)
-	service := service.NewService(storage, logger)
+	service := service.NewService(config.Service, storage, logger)
 	handler := handler.NewHandler(service, logger)
 	server := server.NewServer(config.Server, handler, logger)
 	return server, storage

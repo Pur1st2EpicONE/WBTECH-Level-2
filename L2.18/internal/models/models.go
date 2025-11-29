@@ -2,18 +2,18 @@ package models
 
 import "time"
 
-type Data struct {
-	Meta  Meta
-	Event Event
+type Event struct {
+	Meta Meta
+	Data Data
 }
 
 type Meta struct {
-	UserID      int
-	EventID     string
-	CurrentDate time.Time
-	NewDate     time.Time
+	UserID    int
+	EventID   string
+	EventDate time.Time
+	NewDate   time.Time
 }
 
-type Event struct {
+type Data struct {
 	Text string
 }

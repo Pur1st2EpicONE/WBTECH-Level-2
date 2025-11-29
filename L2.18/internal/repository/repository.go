@@ -8,9 +8,11 @@ import (
 )
 
 type Storage interface {
-	CreateEvent(data *models.Data) (string, error)
-	UpdateEvent(data *models.Data) error
+	CreateEvent(data *models.Event) (string, error)
+	UpdateEvent(data *models.Event) error
 	DeleteEvent(meta *models.Meta) error
+	GetMetaByID(eventID string) *models.Meta
+	CountUserEvents(userID int) (int, error)
 	GetEventsForDay(meta *models.Meta) ([]models.Event, error)
 	GetEventsForWeek(meta *models.Meta) ([]models.Event, error)
 	GetEventsForMonth(meta *models.Meta) ([]models.Event, error)

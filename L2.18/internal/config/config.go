@@ -12,6 +12,7 @@ type App struct {
 	Server  Server
 	Logger  Logger
 	Storage Storage
+	Service Service
 }
 
 type Server struct {
@@ -26,6 +27,10 @@ type Storage struct {
 	MaxUsers         int
 	MaxEventsPerUser int
 	MaxEventsPerDay  int
+}
+
+type Service struct {
+	MaxEventsPerUser int
 }
 
 type Logger struct {

@@ -11,36 +11,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func validateQuery(userID string, eventDate string) (int, []time.Time, error) {
+func validateQuery(userID string, eventDate string) (int, time.Time, error) {
 
 	if userID == "" || eventDate == "" {
-		return 0, nil, fmt.Errorf("%w: user id or date is empty", errs.ErrMissingParams)
+		return 0, time.Time{}, fmt.Errorf("%w: user id or date is empty", errs.ErrMissingParams)
 	}
 
 	id, err := strconv.Atoi(userID)
 	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", errs.ErrInvalidUserID, err)
+		return 0, time.Time{}, errs.ErrInvalidUserID
 	}
 
-	dates, err := validateDates(eventDate)
+	date, err := parseDate(eventDate)
 	if err != nil {
-		return 0, nil, fmt.Errorf("%w: %v", errs.ErrInvalidDateFormat, err)
+		return 0, time.Time{}, err
 	}
 
-	return id, dates, nil
+	return id, date, nil
 
 }
 
-func validateDates(dates ...string) ([]time.Time, error) {
-	res := make([]time.Time, len(dates))
-	for i, date := range dates {
-		eventDate, err := time.Parse("2006-01-02", date)
-		if err != nil {
-			return nil, err
-		}
-		res[i] = eventDate
+func parseDate(date string) (time.Time, error) {
+
+	if date == "" {
+		return time.Time{}, errs.ErrMissingDate
 	}
-	return res, nil
+
+	eventDate, err := time.Parse("2006-01-02", date)
+	if err != nil {
+		return time.Time{}, errs.ErrInvalidDateFormat
+	}
+
+	return eventDate, nil
+
 }
 
 func respondOK(c *gin.Context, response any) {
@@ -63,19 +66,22 @@ func mapErrorToStatus(err error) (int, string) {
 		errors.Is(err, errs.ErrInvalidDateFormat),
 		errors.Is(err, errs.ErrEmptyEventText),
 		errors.Is(err, errs.ErrEventTextTooLong),
-		errors.Is(err, errs.ErrEventInPast),
-		errors.Is(err, errs.ErrEventTooFar),
 		errors.Is(err, errs.ErrMissingEventID),
 		errors.Is(err, errs.ErrMissingDate):
 		return http.StatusBadRequest, err.Error()
 
 	case errors.Is(err, errs.ErrMaxEvents),
 		errors.Is(err, errs.ErrEventNotFound),
+		errors.Is(err, errs.ErrNothingToUpdate),
+		errors.Is(err, errs.ErrEventInPast),
+		errors.Is(err, errs.ErrEventTooFar),
+		errors.Is(err, errs.ErrInvalidEventID),
+		errors.Is(err, errs.ErrUnauthorized),
 		errors.Is(err, errs.ErrUserNotFound):
 		return http.StatusServiceUnavailable, err.Error()
 
 	default:
-		return http.StatusInternalServerError, "internal server error"
+		return http.StatusInternalServerError, errs.ErrInternal.Error()
 	}
 
 }

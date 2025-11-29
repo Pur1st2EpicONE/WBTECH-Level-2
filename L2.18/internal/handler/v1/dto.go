@@ -1,9 +1,9 @@
 package v1
 
 type CreateRequestV1 struct {
-	UserID    int    `json:"user_id" binding:"required"`
-	EventDate string `json:"event_date" binding:"required"`
-	Text      string `json:"text" binding:"required"`
+	UserID    int    `json:"user_id"`
+	EventDate string `json:"event_date"`
+	Text      string `json:"text"`
 }
 
 type CreateResponseV1 struct {
@@ -11,11 +11,10 @@ type CreateResponseV1 struct {
 }
 
 type UpdateRequestV1 struct {
-	UserID      int    `json:"user_id" binding:"required"`
-	EventID     string `json:"event_id" binding:"required"`
-	CurrentDate string `json:"current_date" binding:"required"`
-	NewDate     string `json:"new_date" binding:"required"`
-	Text        string `json:"text" binding:"required"`
+	UserID  int     `json:"user_id"`
+	EventID string  `json:"event_id"`
+	Text    *string `json:"text,omitempty"`
+	NewDate *string `json:"new_date,omitempty"`
 }
 
 type UpdateResponseV1 struct {
@@ -23,9 +22,8 @@ type UpdateResponseV1 struct {
 }
 
 type DeleteRequestV1 struct {
-	UserID    int    `json:"user_id" binding:"required"`
-	EventID   string `json:"event_id" binding:"required"`
-	EventDate string `json:"event_date" binding:"required"`
+	UserID  int    `json:"user_id" binding:"required"`
+	EventID string `json:"event_id" binding:"required"`
 }
 
 type DeleteResponseV1 struct {
@@ -33,7 +31,9 @@ type DeleteResponseV1 struct {
 }
 
 type EventDtoV1 struct {
-	Text string `json:"text"`
+	Text      string `json:"text"`
+	EventDate string `json:"event_date"`
+	EventID   string `json:"event_id"`
 }
 
 type ListOfEventsResponseV1 struct {

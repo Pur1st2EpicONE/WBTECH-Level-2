@@ -1,6 +1,8 @@
 package v1
 
 import (
+	"time"
+
 	"L2.18/internal/errs"
 	"L2.18/internal/models"
 	"L2.18/internal/service"
@@ -29,18 +31,18 @@ func (h *Handler) CreateEvent(c *gin.Context) {
 		return
 	}
 
-	eventDates, err := validateDates(request.EventDate)
+	eventDate, err := parseDate(request.EventDate)
 	if err != nil {
-		respondError(c, errs.ErrInvalidDateFormat)
+		respondError(c, err)
 		return
 	}
 
-	data := models.Data{
-		Meta:  models.Meta{UserID: request.UserID, CurrentDate: eventDates[0]},
-		Event: models.Event{Text: request.Text},
+	event := models.Event{
+		Meta: models.Meta{UserID: request.UserID, EventDate: eventDate},
+		Data: models.Data{Text: request.Text},
 	}
 
-	eventID, err := h.service.CreateEvent(&data)
+	eventID, err := h.service.CreateEvent(&event)
 	if err != nil {
 		respondError(c, err)
 		return
@@ -59,18 +61,25 @@ func (h *Handler) UpdateEvent(c *gin.Context) {
 		return
 	}
 
-	eventDates, err := validateDates(request.CurrentDate, request.NewDate)
-	if err != nil {
-		respondError(c, errs.ErrInvalidDateFormat)
-		return
+	var date time.Time
+	var err error
+
+	if request.NewDate != nil && *request.NewDate != "" {
+		date, err = parseDate(*request.NewDate)
+		if err != nil {
+			respondError(c, errs.ErrInvalidDateFormat)
+			return
+		}
+
 	}
 
-	data := models.Data{
-		Meta:  models.Meta{UserID: request.UserID, EventID: request.EventID, CurrentDate: eventDates[0], NewDate: eventDates[1]},
-		Event: models.Event{Text: request.Text},
+	event := models.Event{Meta: models.Meta{UserID: request.UserID, EventID: request.EventID, NewDate: date}}
+
+	if request.Text != nil {
+		event.Data.Text = *request.Text
 	}
 
-	if err := h.service.UpdateEvent(&data); err != nil {
+	if err := h.service.UpdateEvent(&event); err != nil {
 		respondError(c, err)
 		return
 	}
@@ -88,13 +97,7 @@ func (h *Handler) DeleteEvent(c *gin.Context) {
 		return
 	}
 
-	eventDates, err := validateDates(request.EventDate)
-	if err != nil {
-		respondError(c, errs.ErrInvalidDateFormat)
-		return
-	}
-
-	meta := models.Meta{UserID: request.UserID, EventID: request.EventID, CurrentDate: eventDates[0]}
+	meta := models.Meta{UserID: request.UserID, EventID: request.EventID}
 
 	if err := h.service.DeleteEvent(&meta); err != nil {
 		respondError(c, err)
@@ -119,13 +122,13 @@ func (h *Handler) GetEventsForMonth(c *gin.Context) {
 
 func (h *Handler) getEvents(c *gin.Context, getFunc func(*models.Meta) ([]models.Event, error)) {
 
-	userId, eventDates, err := validateQuery(c.Query("user_id"), c.Query("date"))
+	userId, eventDate, err := validateQuery(c.Query("user_id"), c.Query("date"))
 	if err != nil {
 		respondError(c, err)
 		return
 	}
 
-	events, err := getFunc(&models.Meta{UserID: userId, CurrentDate: eventDates[0]})
+	events, err := getFunc(&models.Meta{UserID: userId, EventDate: eventDate})
 	if err != nil {
 		respondError(c, err)
 		return
@@ -134,7 +137,7 @@ func (h *Handler) getEvents(c *gin.Context, getFunc func(*models.Meta) ([]models
 	respEvents := make([]EventDtoV1, len(events))
 
 	for i, e := range events {
-		respEvents[i] = EventDtoV1{Text: e.Text}
+		respEvents[i] = EventDtoV1{Text: e.Data.Text, EventDate: e.Meta.EventDate.Format("2006-01-02"), EventID: e.Meta.EventID}
 	}
 
 	respondOK(c, ListOfEventsResponseV1{Events: respEvents})
