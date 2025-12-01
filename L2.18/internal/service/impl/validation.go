@@ -9,17 +9,17 @@ import (
 	"github.com/google/uuid"
 )
 
-func validateCreate(data *models.Event) error {
+func validateCreate(event *models.Event) error {
 
-	if data.Meta.UserID <= 0 {
+	if event.Meta.UserID <= 0 {
 		return errs.ErrInvalidUserID
 	}
 
-	if err := validateDate(data.Meta.EventDate); err != nil {
+	if err := validateDate(event.Meta.EventDate); err != nil {
 		return err
 	}
 
-	if err := validateEvent(data.Data); err != nil {
+	if err := validateData(event.Data); err != nil {
 		return err
 	}
 
@@ -27,28 +27,38 @@ func validateCreate(data *models.Event) error {
 
 }
 
-func validateUpdate(data *models.Event) error {
+func validateUpdate(event *models.Event, oldEvent *models.Event) error {
 
-	if data.Meta.UserID <= 0 {
-		return errs.ErrInvalidUserID
+	if oldEvent == nil {
+		return errs.ErrEventNotFound
 	}
 
-	if err := validateEventID(data.Meta.EventID); err != nil {
-		return err
+	if oldEvent.Meta.UserID != event.Meta.UserID {
+		return errs.ErrUnauthorized
 	}
 
-	if data.Meta.NewDate.IsZero() && data.Data.Text == "" {
+	nothingToUpdate := true
+
+	if !event.Meta.NewDate.IsZero() && !oldEvent.Meta.EventDate.Equal(event.Meta.NewDate) {
+		nothingToUpdate = false
+	}
+
+	if event.Data.Text != oldEvent.Data.Text {
+		nothingToUpdate = false
+	}
+
+	if nothingToUpdate {
 		return errs.ErrNothingToUpdate
 	}
 
-	if !data.Meta.NewDate.IsZero() {
-		if err := validateDate(data.Meta.NewDate); err != nil {
+	if !event.Meta.NewDate.IsZero() {
+		if err := validateDate(event.Meta.NewDate); err != nil {
 			return err
 		}
 	}
 
-	if data.Data.Text != "" {
-		if err := validateEvent(data.Data); err != nil {
+	if event.Data.Text != "" {
+		if err := validateData(event.Data); err != nil {
 			return err
 		}
 	}
@@ -56,14 +66,14 @@ func validateUpdate(data *models.Event) error {
 	return nil
 }
 
-func validateDelete(meta *models.Meta) error {
+func validateDelete(meta *models.Meta, oldEvent *models.Event) error {
 
-	if meta.UserID <= 0 {
-		return errs.ErrInvalidUserID
+	if oldEvent == nil {
+		return errs.ErrEventNotFound
 	}
 
-	if meta.EventID == "" {
-		return errs.ErrMissingEventID
+	if oldEvent.Meta.UserID != meta.UserID {
+		return errs.ErrUnauthorized
 	}
 
 	return nil
@@ -86,10 +96,6 @@ func validateGet(meta *models.Meta) error {
 
 func validateDate(date time.Time) error {
 
-	if date.IsZero() { // ?????
-		return errs.ErrMissingDate // ?????
-	} // ?????
-
 	eventUTC := date.UTC().Truncate(24 * time.Hour)
 	todayUTC := time.Now().UTC().Truncate(24 * time.Hour)
 
@@ -106,13 +112,9 @@ func validateDate(date time.Time) error {
 
 }
 
-func validateEvent(event models.Data) error {
+func validateData(data models.Data) error {
 
-	if len(event.Text) == 0 {
-		return errs.ErrEmptyEventText
-	}
-
-	if len(event.Text) > 500 {
+	if len(data.Text) > 500 {
 		return errs.ErrEventTextTooLong
 	}
 
@@ -120,12 +122,16 @@ func validateEvent(event models.Data) error {
 
 }
 
-func validateEventID(id string) error {
+func validateIDs(userID int, eventID string) error {
 
-	if id == "" {
+	if userID <= 0 {
+		return errs.ErrInvalidUserID
+	}
+
+	if eventID == "" {
 		return errs.ErrMissingEventID
 	}
-	_, err := uuid.Parse(id)
+	_, err := uuid.Parse(eventID)
 	if err != nil {
 		return errs.ErrInvalidEventID
 	}

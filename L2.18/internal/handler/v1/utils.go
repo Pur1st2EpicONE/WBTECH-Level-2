@@ -2,7 +2,6 @@ package v1
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,7 +13,7 @@ import (
 func validateQuery(userID string, eventDate string) (int, time.Time, error) {
 
 	if userID == "" || eventDate == "" {
-		return 0, time.Time{}, fmt.Errorf("%w: user id or date is empty", errs.ErrMissingParams)
+		return 0, time.Time{}, errs.ErrMissingParams
 	}
 
 	id, err := strconv.Atoi(userID)
@@ -67,6 +66,7 @@ func mapErrorToStatus(err error) (int, string) {
 		errors.Is(err, errs.ErrEmptyEventText),
 		errors.Is(err, errs.ErrEventTextTooLong),
 		errors.Is(err, errs.ErrMissingEventID),
+		errors.Is(err, errs.ErrMissingParams),
 		errors.Is(err, errs.ErrMissingDate):
 		return http.StatusBadRequest, err.Error()
 
@@ -76,8 +76,7 @@ func mapErrorToStatus(err error) (int, string) {
 		errors.Is(err, errs.ErrEventInPast),
 		errors.Is(err, errs.ErrEventTooFar),
 		errors.Is(err, errs.ErrInvalidEventID),
-		errors.Is(err, errs.ErrUnauthorized),
-		errors.Is(err, errs.ErrUserNotFound):
+		errors.Is(err, errs.ErrUnauthorized):
 		return http.StatusServiceUnavailable, err.Error()
 
 	default:

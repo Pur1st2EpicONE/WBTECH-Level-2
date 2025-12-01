@@ -11,6 +11,8 @@ app:
     debug_mode: true
 
 storage:
-  max_users: 2
-  max_events_per_user: 3
+  expected_users: 2
   max_events_per_day: 3
+
+service:
+  max_events_per_user: 3

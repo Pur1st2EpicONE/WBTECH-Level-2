@@ -64,8 +64,8 @@ func (h *Handler) UpdateEvent(c *gin.Context) {
 	var date time.Time
 	var err error
 
-	if request.NewDate != nil && *request.NewDate != "" {
-		date, err = parseDate(*request.NewDate)
+	if request.NewDate != "" {
+		date, err = parseDate(request.NewDate)
 		if err != nil {
 			respondError(c, errs.ErrInvalidDateFormat)
 			return
@@ -73,11 +73,9 @@ func (h *Handler) UpdateEvent(c *gin.Context) {
 
 	}
 
-	event := models.Event{Meta: models.Meta{UserID: request.UserID, EventID: request.EventID, NewDate: date}}
-
-	if request.Text != nil {
-		event.Data.Text = *request.Text
-	}
+	event := models.Event{
+		Meta: models.Meta{UserID: request.UserID, EventID: request.EventID, NewDate: date},
+		Data: models.Data{Text: request.Text}}
 
 	if err := h.service.UpdateEvent(&event); err != nil {
 		respondError(c, err)
@@ -108,19 +106,19 @@ func (h *Handler) DeleteEvent(c *gin.Context) {
 
 }
 
-func (h *Handler) GetEventsForDay(c *gin.Context) {
-	h.getEvents(c, h.service.GetEventsForDay)
+func (h *Handler) GetEventsDay(c *gin.Context) {
+	h.getEvents(c, models.Day)
 }
 
-func (h *Handler) GetEventsForWeek(c *gin.Context) {
-	h.getEvents(c, h.service.GetEventsForWeek)
+func (h *Handler) GetEventsWeek(c *gin.Context) {
+	h.getEvents(c, models.Week)
 }
 
-func (h *Handler) GetEventsForMonth(c *gin.Context) {
-	h.getEvents(c, h.service.GetEventsForMonth)
+func (h *Handler) GetEventsMonth(c *gin.Context) {
+	h.getEvents(c, models.Month)
 }
 
-func (h *Handler) getEvents(c *gin.Context, getFunc func(*models.Meta) ([]models.Event, error)) {
+func (h *Handler) getEvents(c *gin.Context, period models.Period) {
 
 	userId, eventDate, err := validateQuery(c.Query("user_id"), c.Query("date"))
 	if err != nil {
@@ -128,7 +126,7 @@ func (h *Handler) getEvents(c *gin.Context, getFunc func(*models.Meta) ([]models
 		return
 	}
 
-	events, err := getFunc(&models.Meta{UserID: userId, EventDate: eventDate})
+	events, err := h.service.GetEvents(&models.Meta{UserID: userId, EventDate: eventDate}, period)
 	if err != nil {
 		respondError(c, err)
 		return

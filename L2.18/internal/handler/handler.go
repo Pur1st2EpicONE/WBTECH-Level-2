@@ -20,9 +20,10 @@ func NewHandler(service service.Service, logger logger.Logger) http.Handler {
 	apiV1.POST("/update_event", handlerV1.UpdateEvent)
 	apiV1.POST("/delete_event", handlerV1.DeleteEvent)
 
-	apiV1.GET("/events_for_day", handlerV1.GetEventsForDay)
-	apiV1.GET("/events_for_week", handlerV1.GetEventsForWeek)
-	apiV1.GET("/events_for_month", handlerV1.GetEventsForMonth)
+	apiV1.GET("/events_for_day", handlerV1.GetEventsDay)
+	apiV1.GET("/events_for_week", handlerV1.GetEventsWeek)
+	apiV1.GET("/events_for_month", handlerV1.GetEventsMonth)
 
 	return router
+
 }

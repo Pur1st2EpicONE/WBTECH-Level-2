@@ -1,6 +1,8 @@
 package memory
 
 import (
+	"fmt"
+	"sync"
 	"time"
 
 	"L2.18/internal/config"
@@ -14,18 +16,22 @@ type Storage struct {
 	eventsByID     map[string]*models.Event
 	userEventCount map[int]int
 	logger         logger.Logger
+	mu             sync.RWMutex
 }
 
 func NewStorage(config config.Storage, logger logger.Logger) *Storage {
 	return &Storage{
-		db:             make(map[int]map[string][]*models.Event, config.MaxUsers),
-		eventsByID:     make(map[string]*models.Event, (config.MaxEventsPerUser * config.MaxUsers)),
-		userEventCount: make(map[int]int, config.MaxUsers),
+		db:             make(map[int]map[string][]*models.Event, config.ExpectedUsers),
+		eventsByID:     make(map[string]*models.Event, config.ExpectedUsers),
+		userEventCount: make(map[int]int, config.ExpectedUsers),
 		logger:         logger,
 	}
 }
 
 func (s *Storage) CreateEvent(event *models.Event) (string, error) {
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	if _, userExists := s.db[event.Meta.UserID]; !userExists {
 		s.db[event.Meta.UserID] = make(map[string][]*models.Event)
@@ -48,10 +54,13 @@ func (s *Storage) CreateEvent(event *models.Event) (string, error) {
 
 func (s *Storage) UpdateEvent(new *models.Event) error {
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	current := s.eventsByID[new.Meta.EventID]
 
 	if current.Data != new.Data {
-		updateData(current, new)
+		updateData(&current.Data, &new.Data)
 	}
 
 	if !new.Meta.NewDate.IsZero() && !new.Meta.NewDate.Equal(current.Meta.EventDate) {
@@ -89,6 +98,9 @@ func (s *Storage) UpdateEvent(new *models.Event) error {
 
 func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	current := s.eventsByID[meta.EventID]
 	date := format(current.Meta.EventDate)
 
@@ -119,23 +131,55 @@ func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
 }
 
-func (s *Storage) GetMetaByID(eventID string) *models.Meta {
-	if data, eventFound := s.eventsByID[eventID]; eventFound {
-		return &data.Meta
+func (s *Storage) GetEventByID(eventID string) *models.Event {
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if event, eventFound := s.eventsByID[eventID]; eventFound {
+		return event
 	}
+
 	return nil
+
 }
 
 func (s *Storage) CountUserEvents(userID int) (int, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	return s.userEventCount[userID], nil
 }
 
-func (s *Storage) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
+func (s *Storage) GetEvents(meta *models.Meta, period models.Period) ([]models.Event, error) {
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	if period != models.Day && period != models.Week && period != models.Month {
+		return nil, fmt.Errorf("unknown period: %s", period)
+	}
 
 	allUserEvents, eventsFound := s.db[meta.UserID]
 	if !eventsFound {
 		return []models.Event{}, nil
 	}
+
+	switch period {
+	case models.Day:
+		return s.getEventsForDay(allUserEvents, meta)
+
+	case models.Week:
+		return s.getEventsForWeek(allUserEvents, meta)
+
+	case models.Month:
+		return s.getEventsForMonth(allUserEvents, meta)
+	}
+
+	return []models.Event{}, nil
+
+}
+
+func (s *Storage) getEventsForDay(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	dayEvents, eventsFound := allUserEvents[format(meta.EventDate)]
 	if !eventsFound {
@@ -151,12 +195,7 @@ func (s *Storage) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
 
 }
 
-func (s *Storage) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
-
-	allUserEvents, eventsFound := s.db[meta.UserID]
-	if !eventsFound {
-		return []models.Event{}, nil
-	}
+func (s *Storage) getEventsForWeek(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	var res []models.Event
 	year, week := meta.EventDate.ISOWeek()
@@ -174,16 +213,11 @@ func (s *Storage) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
 
 }
 
-func (s *Storage) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
+func (s *Storage) getEventsForMonth(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
-	allUserEvents, eventsFound := s.db[meta.UserID]
-	if !eventsFound {
-		return []models.Event{}, nil
-	}
-
-	var res []models.Event
 	month := meta.EventDate.Month()
 	year := meta.EventDate.Year()
+	var res []models.Event
 
 	for _, dayEvents := range allUserEvents {
 		for _, entry := range dayEvents {
@@ -200,15 +234,16 @@ func (s *Storage) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
 }
 
 func (s *Storage) Close() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.db = nil
+	s.eventsByID = nil
 	s.userEventCount = nil
 	return nil
 }
 
-func updateData(current *models.Event, new *models.Event) {
-	if (new.Data.Text != "") && (new.Data.Text != current.Data.Text) {
-		current.Data.Text = new.Data.Text
-	}
+func updateData(current *models.Data, new *models.Data) {
+	current.Text = new.Text
 }
 
 func format(date time.Time) string {

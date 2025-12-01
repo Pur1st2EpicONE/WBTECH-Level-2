@@ -39,89 +39,41 @@ func (s *Service) CreateEvent(event *models.Event) (string, error) {
 
 }
 
-func (s *Service) UpdateEvent(data *models.Event) error {
+func (s *Service) UpdateEvent(event *models.Event) error {
 
-	if err := validateUpdate(data); err != nil {
+	if err := validateIDs(event.Meta.UserID, event.Meta.EventID); err != nil {
 		return err
 	}
 
-	oldMeta := s.Storage.GetMetaByID(data.Meta.EventID)
-	if oldMeta == nil {
-		return errs.ErrEventNotFound
+	if err := validateUpdate(event, s.Storage.GetEventByID(event.Meta.EventID)); err != nil {
+		return err
 	}
 
-	if oldMeta.UserID != data.Meta.UserID {
-		return errs.ErrUnauthorized
-	}
-
-	return s.Storage.UpdateEvent(data)
+	return s.Storage.UpdateEvent(event)
 
 }
 
 func (s *Service) DeleteEvent(meta *models.Meta) error {
 
-	if err := validateDelete(meta); err != nil {
+	if err := validateIDs(meta.UserID, meta.EventID); err != nil {
 		return err
 	}
 
-	oldMeta := s.Storage.GetMetaByID(meta.EventID)
-	if oldMeta == nil {
-		return errs.ErrEventNotFound
-	}
-
-	if oldMeta.UserID != meta.UserID {
-		return errs.ErrUnauthorized
+	if err := validateDelete(meta, s.Storage.GetEventByID(meta.EventID)); err != nil {
+		return err
 	}
 
 	return s.Storage.DeleteEvent(meta)
 
 }
 
-func (s *Service) GetEventsForDay(meta *models.Meta) ([]models.Event, error) {
+func (s *Service) GetEvents(meta *models.Meta, period models.Period) ([]models.Event, error) {
 
 	if err := validateGet(meta); err != nil {
 		return nil, err
 	}
 
-	events, err := s.Storage.GetEventsForDay(meta)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].Meta.EventDate.After(events[j].Meta.EventDate)
-	})
-
-	return events, nil
-
-}
-
-func (s *Service) GetEventsForWeek(meta *models.Meta) ([]models.Event, error) {
-
-	if err := validateGet(meta); err != nil {
-		return nil, err
-	}
-
-	events, err := s.Storage.GetEventsForWeek(meta)
-	if err != nil {
-		return nil, err
-	}
-
-	sort.Slice(events, func(i, j int) bool {
-		return events[i].Meta.EventDate.After(events[j].Meta.EventDate)
-	})
-
-	return events, nil
-
-}
-
-func (s *Service) GetEventsForMonth(meta *models.Meta) ([]models.Event, error) {
-
-	if err := validateGet(meta); err != nil {
-		return nil, err
-	}
-
-	events, err := s.Storage.GetEventsForMonth(meta)
+	events, err := s.Storage.GetEvents(meta, period)
 	if err != nil {
 		return nil, err
 	}

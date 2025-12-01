@@ -2,6 +2,14 @@ package models
 
 import "time"
 
+type Period string
+
+const (
+	Day   Period = "day"
+	Week  Period = "week"
+	Month Period = "month"
+)
+
 type Event struct {
 	Meta Meta
 	Data Data

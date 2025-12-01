@@ -24,7 +24,7 @@ type Server struct {
 }
 
 type Storage struct {
-	MaxUsers         int
+	ExpectedUsers    int
 	MaxEventsPerUser int
 	MaxEventsPerDay  int
 }
@@ -53,6 +53,7 @@ func Load() (App, error) {
 		Server:  srvConfig(),
 		Logger:  loggerConfig(),
 		Storage: storageConfig(),
+		Service: serviceConfig(),
 	}, nil
 }
 
@@ -68,9 +69,14 @@ func srvConfig() Server {
 
 func storageConfig() Storage {
 	return Storage{
-		MaxUsers:         viper.GetInt("storage.max_users"),
-		MaxEventsPerUser: viper.GetInt("storage.max_events_per_user"),
-		MaxEventsPerDay:  viper.GetInt("storage.max_events_per_day"),
+		ExpectedUsers:   viper.GetInt("storage.expected_users"),
+		MaxEventsPerDay: viper.GetInt("storage.max_events_per_day"),
+	}
+}
+
+func serviceConfig() Service {
+	return Service{
+		MaxEventsPerUser: viper.GetInt("service.max_events_per_user"),
 	}
 }
 
