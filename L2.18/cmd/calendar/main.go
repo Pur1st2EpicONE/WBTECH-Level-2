@@ -4,7 +4,7 @@ import "L2.18/internal/app"
 
 func main() {
 
-	calendarApp := app.Start()
+	calendarApp := app.Boot()
 	defer calendarApp.Stop()
 
 	calendarApp.Run()

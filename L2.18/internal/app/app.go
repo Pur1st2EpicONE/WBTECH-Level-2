@@ -27,7 +27,7 @@ type App struct {
 	wg      *sync.WaitGroup
 }
 
-func Start() *App {
+func Boot() *App {
 
 	config, err := config.Load()
 	if err != nil {
@@ -35,9 +35,9 @@ func Start() *App {
 	}
 
 	logger := logger.NewLogger(config.Logger)
-	ctx, cancel := newContext(logger)
-
 	server, storage := wireApp(nil, config, logger)
+
+	ctx, cancel := newContext(logger)
 	wg := new(sync.WaitGroup)
 
 	return &App{
@@ -49,6 +49,14 @@ func Start() *App {
 		wg:      wg,
 	}
 
+}
+
+func wireApp(db any, config config.App, logger logger.Logger) (server.Server, repository.Storage) {
+	storage := repository.NewStorage(db, config.Storage, logger)
+	service := service.NewService(config.Service, storage, logger)
+	handler := handler.NewHandler(service, logger)
+	server := server.NewServer(config.Server, handler, logger)
+	return server, storage
 }
 
 func newContext(logger logger.Logger) (context.Context, context.CancelFunc) {
@@ -67,27 +75,24 @@ func newContext(logger logger.Logger) (context.Context, context.CancelFunc) {
 
 }
 
-func wireApp(db any, config config.App, logger logger.Logger) (server.Server, repository.Storage) {
-	storage := repository.NewStorage(db, config.Storage, logger)
-	service := service.NewService(config.Service, storage, logger)
-	handler := handler.NewHandler(service, logger)
-	server := server.NewServer(config.Server, handler, logger)
-	return server, storage
+func (a *App) Run() {
+
+	a.wg.Go(func() {
+		if err := a.server.Run(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			a.logger.LogFatal("server run failed", err, "layer", "app")
+		}
+	})
+
+	<-a.ctx.Done()
+
+	a.logger.LogInfo("app — shutting down...", "layer", "app")
+	a.server.Shutdown()
+	a.Stop()
+	a.wg.Wait()
+
 }
 
-func (a App) Stop() {
-
-}
-
-func (a App) Run() {
-	a.wg.Add(1)
-	go func() {
-		defer a.wg.Done()
-		<-a.ctx.Done()
-		a.server.Shutdown()
-	}()
-	err := a.server.Run()
-	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		a.logger.LogFatal("app — server run failed", err, "layer", "app")
-	}
+func (a *App) Stop() {
+	a.storage.Close()
+	a.logger.Close()
 }

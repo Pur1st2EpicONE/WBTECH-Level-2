@@ -7,7 +7,8 @@ import (
 
 type Logger interface {
 	LogFatal(msg string, err error, args ...any)
-	LogError(string, error, ...any)
+	LogError(msg string, err error, args ...any)
+	LogWarn(msg string, args ...any)
 	LogInfo(msg string, args ...any)
 	Debug(msg string, args ...any)
 	Close() error

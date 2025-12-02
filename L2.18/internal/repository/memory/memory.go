@@ -239,6 +239,7 @@ func (s *Storage) Close() error {
 	s.db = nil
 	s.eventsByID = nil
 	s.userEventCount = nil
+	s.logger.LogInfo("in-memory storage — cleared and stopped", "layer", "repository.memory")
 	return nil
 }
 

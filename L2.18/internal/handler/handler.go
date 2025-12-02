@@ -1,19 +1,25 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	v1 "L2.18/internal/handler/v1"
 	"L2.18/internal/service"
 	"L2.18/pkg/logger"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 func NewHandler(service service.Service, logger logger.Logger) http.Handler {
 
-	router := gin.New()
+	handler := gin.New()
 
-	apiV1 := router.Group("/api/v1")
+	handler.Use(gin.Recovery())
+	handler.Use(middleware(logger))
+
+	apiV1 := handler.Group("/api/v1")
 	handlerV1 := v1.NewHandler(service, logger)
 
 	apiV1.POST("/create_event", handlerV1.CreateEvent)
@@ -24,6 +30,52 @@ func NewHandler(service service.Service, logger logger.Logger) http.Handler {
 	apiV1.GET("/events_for_week", handlerV1.GetEventsWeek)
 	apiV1.GET("/events_for_month", handlerV1.GetEventsMonth)
 
-	return router
+	return handler
+
+}
+
+func middleware(logger logger.Logger) gin.HandlerFunc {
+
+	return func(c *gin.Context) {
+
+		start := time.Now()
+
+		requestID := uuid.New().String()
+		c.Set("request_id", requestID)
+
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+
+		fields := []any{
+			"request_id", requestID,
+			"method", c.Request.Method,
+			"path", path,
+			"latency", latency.String(),
+			"client_ip", c.ClientIP(),
+			"status", status,
+			"query", query,
+			"proto", c.Request.Proto,
+			"user_agent", c.Request.UserAgent(),
+			"gin_errors", c.Errors.ByType(gin.ErrorTypePrivate).String(),
+			"layer", "handler",
+		}
+
+		msg := fmt.Sprintf("handler — received %s request to %s", c.Request.Method, path)
+
+		switch status {
+		case 500:
+			logger.LogError(msg, nil, fields...)
+		case 400, 503:
+			logger.LogWarn(msg, fields...)
+		default:
+			logger.LogInfo(msg, fields...)
+		}
+
+	}
 
 }

@@ -1,3 +1,8 @@
+app:
+  logger:
+    log_directory:
+    debug_mode: true
+
 server:
   port: "8080"
   read_timeout: 5s
@@ -5,14 +10,9 @@ server:
   max_header_bytes: 1048576
   shutdown_timeout: 15s
 
-app:
-  logger:
-    log_directory:
-    debug_mode: true
+service:
+  max_events_per_user: 3
 
 storage:
   expected_users: 2
   max_events_per_day: 3
-
-service:
-  max_events_per_user: 3
