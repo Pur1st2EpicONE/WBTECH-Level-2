@@ -11,7 +11,7 @@ type Logger interface {
 	LogWarn(msg string, args ...any)
 	LogInfo(msg string, args ...any)
 	Debug(msg string, args ...any)
-	Close() error
+	Close()
 }
 
 func NewLogger(config config.Logger) Logger {

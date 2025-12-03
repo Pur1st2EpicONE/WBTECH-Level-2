@@ -10,7 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func validateQuery(userID string, eventDate string) (int, time.Time, error) {
+func parseQuery(userID string, eventDate string) (int, time.Time, error) {
 
 	if userID == "" || eventDate == "" {
 		return 0, time.Time{}, errs.ErrMissingParams
@@ -81,6 +81,7 @@ func mapErrorToStatus(err error) (int, string) {
 
 	default:
 		return http.StatusInternalServerError, errs.ErrInternal.Error()
+
 	}
 
 }

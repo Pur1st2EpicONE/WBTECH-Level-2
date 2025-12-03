@@ -1,6 +1,7 @@
 package impl
 
 import (
+	"fmt"
 	"sort"
 
 	"L2.18/internal/config"
@@ -30,6 +31,8 @@ func (s *Service) CreateEvent(event *models.Event) (string, error) {
 	if err != nil {
 		return "", err
 	}
+
+	s.logger.Debug(fmt.Sprintf("service — user %d has %d remaining event slots", event.Meta.UserID, s.maxEventsPerUser-count), "UserID", event.Meta.UserID, "layer", "service.impl")
 
 	if count >= s.maxEventsPerUser {
 		return "", errs.ErrMaxEvents

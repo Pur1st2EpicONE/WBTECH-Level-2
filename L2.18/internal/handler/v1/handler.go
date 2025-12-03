@@ -120,7 +120,7 @@ func (h *Handler) GetEventsMonth(c *gin.Context) {
 
 func (h *Handler) getEvents(c *gin.Context, period models.Period) {
 
-	userId, eventDate, err := validateQuery(c.Query("user_id"), c.Query("date"))
+	userId, eventDate, err := parseQuery(c.Query("user_id"), c.Query("date"))
 	if err != nil {
 		respondError(c, err)
 		return

@@ -89,9 +89,9 @@ func (l *Logger) Debug(msg string, args ...any) {
 	l.logger.Debug(msg, args...)
 }
 
-func (l *Logger) Close() error {
+// Close closes the log file, if it was used.
+func (l *Logger) Close() {
 	if l.file != nil {
-		return l.file.Close()
+		_ = l.file.Close()
 	}
-	return nil
 }

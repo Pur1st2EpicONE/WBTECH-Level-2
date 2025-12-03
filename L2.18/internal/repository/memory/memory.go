@@ -35,18 +35,15 @@ func (s *Storage) CreateEvent(event *models.Event) (string, error) {
 
 	if _, userExists := s.db[event.Meta.UserID]; !userExists {
 		s.db[event.Meta.UserID] = make(map[string][]*models.Event)
+		s.logger.Debug("repository — new user created", "UserID", event.Meta.UserID, "layer", "repository.memory")
 	}
 
 	eventDate := format(event.Meta.EventDate)
 	event.Meta.EventID = uuid.New().String()
 
 	s.db[event.Meta.UserID][eventDate] = append(s.db[event.Meta.UserID][eventDate], event)
-	s.userEventCount[event.Meta.UserID]++
-
-	if s.eventsByID == nil {
-		s.eventsByID = make(map[string]*models.Event)
-	}
 	s.eventsByID[event.Meta.EventID] = event
+	s.userEventCount[event.Meta.UserID]++
 
 	return event.Meta.EventID, nil
 
@@ -61,6 +58,7 @@ func (s *Storage) UpdateEvent(new *models.Event) error {
 
 	if current.Data != new.Data {
 		updateData(&current.Data, &new.Data)
+		s.logger.Debug("repository — event data updated", "UserID", new.Meta.UserID, "EventID", new.Meta.EventID, "layer", "repository.memory")
 	}
 
 	if !new.Meta.NewDate.IsZero() && !new.Meta.NewDate.Equal(current.Meta.EventDate) {
@@ -89,6 +87,8 @@ func (s *Storage) UpdateEvent(new *models.Event) error {
 
 		current.Meta.EventDate = new.Meta.NewDate
 		s.db[current.Meta.UserID][newDate] = append(s.db[current.Meta.UserID][newDate], current)
+
+		s.logger.Debug("repository — event meta updated", "UserID", new.Meta.UserID, "EventID", new.Meta.EventID, "layer", "repository.memory")
 
 	}
 
@@ -165,17 +165,17 @@ func (s *Storage) GetEvents(meta *models.Meta, period models.Period) ([]models.E
 	}
 
 	switch period {
+
 	case models.Day:
 		return s.getEventsForDay(allUserEvents, meta)
 
 	case models.Week:
 		return s.getEventsForWeek(allUserEvents, meta)
 
-	case models.Month:
+	default:
 		return s.getEventsForMonth(allUserEvents, meta)
-	}
 
-	return []models.Event{}, nil
+	}
 
 }
 
@@ -198,15 +198,19 @@ func (s *Storage) getEventsForDay(allUserEvents map[string][]*models.Event, meta
 func (s *Storage) getEventsForWeek(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	var res []models.Event
-	year, week := meta.EventDate.ISOWeek()
+	targetYear, targetWeek := meta.EventDate.ISOWeek()
 
 	for _, dayEvents := range allUserEvents {
-		for _, entry := range dayEvents {
-			entryYear, entryWeek := entry.Meta.EventDate.ISOWeek()
-			if entryYear == year && entryWeek == week {
-				res = append(res, *entry)
+
+		for _, event := range dayEvents {
+
+			eventYear, entryWeek := event.Meta.EventDate.ISOWeek()
+			if eventYear == targetYear && entryWeek == targetWeek {
+				res = append(res, *event)
 			}
+
 		}
+
 	}
 
 	return res, nil
@@ -215,32 +219,41 @@ func (s *Storage) getEventsForWeek(allUserEvents map[string][]*models.Event, met
 
 func (s *Storage) getEventsForMonth(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
-	month := meta.EventDate.Month()
-	year := meta.EventDate.Year()
 	var res []models.Event
 
+	targetYear := meta.EventDate.Year()
+	targetMonth := meta.EventDate.Month()
+
 	for _, dayEvents := range allUserEvents {
-		for _, entry := range dayEvents {
-			entryMonth := entry.Meta.EventDate.Month()
-			entryYear := entry.Meta.EventDate.Year()
-			if entryYear == year && entryMonth == month {
-				res = append(res, *entry)
+
+		for _, event := range dayEvents {
+
+			eventYear := event.Meta.EventDate.Year()
+			eventMonth := event.Meta.EventDate.Month()
+
+			if eventYear == targetYear && eventMonth == targetMonth {
+				res = append(res, *event)
 			}
+
 		}
+
 	}
 
 	return res, nil
 
 }
 
-func (s *Storage) Close() error {
+func (s *Storage) Close() {
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.db = nil
 	s.eventsByID = nil
 	s.userEventCount = nil
+
 	s.logger.LogInfo("in-memory storage — cleared and stopped", "layer", "repository.memory")
-	return nil
+
 }
 
 func updateData(current *models.Data, new *models.Data) {

@@ -33,21 +33,11 @@ func validateUpdate(event *models.Event, oldEvent *models.Event) error {
 		return errs.ErrEventNotFound
 	}
 
-	if oldEvent.Meta.UserID != event.Meta.UserID {
+	if event.Meta.UserID != oldEvent.Meta.UserID {
 		return errs.ErrUnauthorized
 	}
 
-	nothingToUpdate := true
-
-	if !event.Meta.NewDate.IsZero() && !oldEvent.Meta.EventDate.Equal(event.Meta.NewDate) {
-		nothingToUpdate = false
-	}
-
-	if event.Data.Text != oldEvent.Data.Text {
-		nothingToUpdate = false
-	}
-
-	if nothingToUpdate {
+	if isNothingToUpdate(event, oldEvent) {
 		return errs.ErrNothingToUpdate
 	}
 
@@ -66,13 +56,23 @@ func validateUpdate(event *models.Event, oldEvent *models.Event) error {
 	return nil
 }
 
+func isNothingToUpdate(event, oldEvent *models.Event) bool {
+	if !event.Meta.NewDate.IsZero() && !oldEvent.Meta.EventDate.Equal(event.Meta.NewDate) {
+		return false
+	}
+	if event.Data.Text != oldEvent.Data.Text {
+		return false
+	}
+	return true
+}
+
 func validateDelete(meta *models.Meta, oldEvent *models.Event) error {
 
 	if oldEvent == nil {
 		return errs.ErrEventNotFound
 	}
 
-	if oldEvent.Meta.UserID != meta.UserID {
+	if meta.UserID != oldEvent.Meta.UserID {
 		return errs.ErrUnauthorized
 	}
 
@@ -131,6 +131,7 @@ func validateIDs(userID int, eventID string) error {
 	if eventID == "" {
 		return errs.ErrMissingEventID
 	}
+
 	_, err := uuid.Parse(eventID)
 	if err != nil {
 		return errs.ErrInvalidEventID

@@ -88,6 +88,7 @@ func (a *App) Run() {
 	a.logger.LogInfo("app — shutting down...", "layer", "app")
 	a.server.Shutdown()
 	a.Stop()
+
 	a.wg.Wait()
 
 }

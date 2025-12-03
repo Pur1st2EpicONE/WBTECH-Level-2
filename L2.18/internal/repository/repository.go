@@ -14,7 +14,7 @@ type Storage interface {
 	GetEventByID(eventID string) *models.Event
 	CountUserEvents(userID int) (int, error)
 	GetEvents(meta *models.Meta, period models.Period) ([]models.Event, error)
-	Close() error
+	Close()
 }
 
 func NewStorage(db any, config config.Storage, logger logger.Logger) Storage {

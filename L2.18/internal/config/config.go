@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -39,10 +38,6 @@ type Storage struct {
 }
 
 func Load() (App, error) {
-
-	if err := godotenv.Load(); err != nil {
-		return App{}, fmt.Errorf("godotenv: failed to %v", err)
-	}
 
 	viper.AddConfigPath(".")
 	viper.SetConfigName("config")
