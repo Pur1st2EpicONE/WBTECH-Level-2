@@ -101,15 +101,14 @@ func newContext(logger logger.Logger) (context.Context, context.CancelFunc) {
 
 }
 
-// Run starts the HTTP server and waits for shutdown signals.
+// Run starts the HTTP server and waits for the application context to be cancelled (e.g., SIGINT).
 //
-// It performs the following:
-//  1. Starts the HTTP server in a separate goroutine managed by the wait group.
-//  2. Waits for the application context to be cancelled (e.g., OS signal received).
-//  3. Logs the shutdown initiation.
-//  4. Calls server.Shutdown() to gracefully stop accepting new requests.
-//  5. Calls App.Stop() to release resources such as storage and logger.
-//  6. Waits for all goroutines to finish using the wait group.
+// It performs the following steps:
+// 1. Starts the HTTP server in a separate goroutine managed by the wait group.
+// 2. Blocks until the application context is cancelled.
+// 3. Logs the shutdown initiation.
+// 4. Calls App.Stop() to gracefully shut down the server and release resources.
+// 5. Waits for all goroutines in the wait group to finish.
 func (a *App) Run() {
 
 	a.wg.Go(func() {
@@ -121,17 +120,20 @@ func (a *App) Run() {
 	<-a.ctx.Done()
 
 	a.logger.LogInfo("app — shutting down...", "layer", "app")
-	a.server.Shutdown()
 	a.Stop()
 
 	a.wg.Wait()
 
 }
 
-// Stop releases all application resources.
+// Stop gracefully shuts down the HTTP server and releases all application resources.
 //
-// It closes the storage and logger to ensure proper cleanup before exiting.
+// It performs the following:
+// 1. Calls server.Shutdown() with a timeout context to stop accepting new requests and finish ongoing ones.
+// 2. Clears all in-memory data in the storage and logs the shutdown.
+// 3. Closes the logger and its underlying resources (e.g., log file).
 func (a *App) Stop() {
+	a.server.Shutdown()
 	a.storage.Close()
 	a.logger.Close()
 }

@@ -87,26 +87,26 @@ func loggerConfig() Logger {
 // serverConfig reads server configuration from Viper.
 func serverConfig() Server {
 	return Server{
-		Port:            viper.GetString("server.port"),
-		ReadTimeout:     viper.GetDuration("server.read_timeout"),
-		WriteTimeout:    viper.GetDuration("server.write_timeout"),
-		MaxHeaderBytes:  viper.GetInt("server.max_header_bytes"),
-		ShutdownTimeout: viper.GetDuration("server.shutdown_timeout"),
+		Port:            viper.GetString("app.server.port"),
+		ReadTimeout:     viper.GetDuration("app.server.read_timeout"),
+		WriteTimeout:    viper.GetDuration("app.server.write_timeout"),
+		MaxHeaderBytes:  viper.GetInt("app.server.max_header_bytes"),
+		ShutdownTimeout: viper.GetDuration("app.server.shutdown_timeout"),
 	}
 }
 
 // serviceConfig reads service configuration from Viper.
 func serviceConfig() Service {
 	return Service{
-		MaxEventsPerUser: viper.GetInt("service.max_events_per_user"),
+		MaxEventsPerUser: viper.GetInt("app.service.max_events_per_user"),
 	}
 }
 
 // storageConfig reads storage configuration from Viper.
 func storageConfig() Storage {
 	return Storage{
-		ExpectedUsers:   viper.GetInt("storage.expected_users"),
-		MaxEventsPerDay: viper.GetInt("storage.max_events_per_day"),
+		ExpectedUsers:   viper.GetInt("app.storage.expected_users"),
+		MaxEventsPerDay: viper.GetInt("app.storage.max_events_per_day"),
 	}
 }
 
@@ -135,37 +135,37 @@ func failsafe(logger *Logger, server *Server, service *Service, storage *Storage
 		logger.Debug = true
 	}
 
-	if !viper.IsSet("server.port") {
+	if !viper.IsSet("app.server.port") {
 		fmt.Println("server.port missing, switching to default '8080'")
 		server.Port = "8080"
 	}
-	if !viper.IsSet("server.read_timeout") {
+	if !viper.IsSet("app.server.read_timeout") {
 		fmt.Println("server.read_timeout missing, switching to default 5s")
 		server.ReadTimeout = 5 * time.Second
 	}
-	if !viper.IsSet("server.write_timeout") {
+	if !viper.IsSet("app.server.write_timeout") {
 		fmt.Println("server.write_timeout missing, switching to default 10s")
 		server.WriteTimeout = 10 * time.Second
 	}
-	if !viper.IsSet("server.max_header_bytes") {
+	if !viper.IsSet("app.server.max_header_bytes") {
 		fmt.Println("server.max_header_bytes missing, switching to default 1MB")
 		server.MaxHeaderBytes = 1048576
 	}
-	if !viper.IsSet("server.shutdown_timeout") {
+	if !viper.IsSet("app.server.shutdown_timeout") {
 		fmt.Println("server.shutdown_timeout missing, switching to default 15s")
 		server.ShutdownTimeout = 15 * time.Second
 	}
 
-	if !viper.IsSet("service.max_events_per_user") {
+	if !viper.IsSet("app.service.max_events_per_user") {
 		fmt.Println("service.max_events_per_user missing, switching to default 100")
 		service.MaxEventsPerUser = 100
 	}
 
-	if !viper.IsSet("storage.expected_users") {
+	if !viper.IsSet("app.storage.expected_users") {
 		fmt.Println("storage.expected_users missing, switching to default 100")
 		storage.ExpectedUsers = 100
 	}
-	if !viper.IsSet("storage.max_events_per_day") {
+	if !viper.IsSet("app.storage.max_events_per_day") {
 		fmt.Println("storage.max_events_per_day missing, switching to default 100")
 		storage.MaxEventsPerDay = 100
 	}
