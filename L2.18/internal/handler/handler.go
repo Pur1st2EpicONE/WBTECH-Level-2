@@ -1,3 +1,5 @@
+// Package handler provides HTTP handler initialization for the application,
+// including API routing, middleware, and Swagger documentation endpoint.
 package handler
 
 import (
@@ -10,8 +12,21 @@ import (
 	"L2.18/pkg/logger"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
+// NewHandler creates and configures the HTTP handler for the application.
+//
+// It sets up the Gin engine, registers middleware, API v1 routes, and the
+// Swagger documentation endpoint.
+//
+// Parameters:
+// - service: the service layer instance that provides business logic
+// - logger: logger instance to log requests and errors
+//
+// Returns:
+// - http.Handler instance ready to be served by a HTTP server
 func NewHandler(service service.Service, logger logger.Logger) http.Handler {
 
 	handler := gin.New()
@@ -30,10 +45,27 @@ func NewHandler(service service.Service, logger logger.Logger) http.Handler {
 	apiV1.GET("/events_for_week", handlerV1.GetEventsWeek)
 	apiV1.GET("/events_for_month", handlerV1.GetEventsMonth)
 
+	handler.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+
 	return handler
 
 }
 
+// middleware creates a Gin middleware that logs incoming HTTP requests and their outcomes.
+//
+// It generates a request ID, measures request latency, and logs request details
+// including method, path, query string, client IP, HTTP status, user agent, and Gin errors.
+//
+// Logging behavior based on HTTP status:
+// - 500: LogError
+// - 400, 503: LogWarn
+// - others: LogInfo
+//
+// Parameters:
+// - logger: logger instance to log request details
+//
+// Returns:
+// - gin.HandlerFunc that can be used as middleware
 func middleware(logger logger.Logger) gin.HandlerFunc {
 
 	return func(c *gin.Context) {

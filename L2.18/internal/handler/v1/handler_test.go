@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"L2.18/internal/errs"
 	"L2.18/internal/models"
 	serviceMock "L2.18/internal/service/mocks"
 	loggerMock "L2.18/pkg/logger/mocks"
@@ -70,7 +71,7 @@ func TestHandler_CreateEvent_ErrInvalidJSON(t *testing.T) {
 
 	testHandler.CreateEvent(c)
 
-	assertErrorResponse(t, w, http.StatusBadRequest, "invalid JSON")
+	assertErrorResponse(t, w, http.StatusBadRequest, errs.ErrInvalidJSON.Error())
 
 }
 
@@ -100,7 +101,7 @@ func TestHandler_CreateEvent_InvalidDate(t *testing.T) {
 	var resp map[string]any
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
 
-	assert.Equal(t, "invalid date format", resp["error"])
+	assert.Equal(t, errs.ErrInvalidDateFormat.Error(), resp["error"])
 
 }
 
@@ -128,7 +129,7 @@ func TestHandler_CreateEvent_ErrService(t *testing.T) {
 
 	testHandler.CreateEvent(c)
 
-	assertErrorResponse(t, w, http.StatusInternalServerError, "internal server error")
+	assertErrorResponse(t, w, http.StatusInternalServerError, errs.ErrInternal.Error())
 
 }
 
@@ -183,7 +184,7 @@ func TestHandler_UpdateEvent_ErrInvalidJSON(t *testing.T) {
 
 	testHandler.UpdateEvent(c)
 
-	assertErrorResponse(t, w, http.StatusBadRequest, "invalid JSON")
+	assertErrorResponse(t, w, http.StatusBadRequest, errs.ErrInvalidJSON.Error())
 
 }
 
@@ -217,7 +218,7 @@ func TestHandler_UpdateEvent_ErrInvalidDate(t *testing.T) {
 
 	testHandler.UpdateEvent(c)
 
-	assertErrorResponse(t, w, http.StatusBadRequest, "invalid date format")
+	assertErrorResponse(t, w, http.StatusBadRequest, errs.ErrInvalidDateFormat.Error())
 
 }
 
@@ -299,7 +300,7 @@ func TestHandler_DeleteEvent_ErrInvalidJSON(t *testing.T) {
 
 	testHandler.DeleteEvent(c)
 
-	assertErrorResponse(t, w, http.StatusBadRequest, "invalid JSON")
+	assertErrorResponse(t, w, http.StatusBadRequest, errs.ErrInvalidJSON.Error())
 
 }
 
@@ -455,7 +456,7 @@ func TestHandler_GetEvents_ParseQueryError(t *testing.T) {
 
 	var resp map[string]string
 	_ = json.Unmarshal(w.Body.Bytes(), &resp)
-	assert.Equal(t, "missing or invalid user id", resp["error"])
+	assert.Equal(t, errs.ErrInvalidUserID.Error(), resp["error"])
 
 }
 
@@ -479,7 +480,7 @@ func TestHandler_GetEvents_ErrService(t *testing.T) {
 
 	testHandler.GetEventsDay(c)
 
-	assertErrorResponse(t, w, http.StatusInternalServerError, "internal server error")
+	assertErrorResponse(t, w, http.StatusInternalServerError, errs.ErrInternal.Error())
 
 }
 

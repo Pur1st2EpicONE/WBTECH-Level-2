@@ -9,6 +9,9 @@ import (
 	"github.com/google/uuid"
 )
 
+// validateCreate performs validation on a new event before creation.
+// It checks that the user ID is valid, the event date is acceptable,
+// and the event data meets length constraints.
 func validateCreate(event *models.Event) error {
 
 	if event.Meta.UserID <= 0 {
@@ -27,6 +30,9 @@ func validateCreate(event *models.Event) error {
 
 }
 
+// validateUpdate checks whether an update to an existing event is valid.
+// It ensures the event exists, belongs to the user, and that the update actually
+// changes either the date or the text. It also validates any new date or text.
 func validateUpdate(event *models.Event, oldEvent *models.Event) error {
 
 	if oldEvent == nil {
@@ -56,7 +62,9 @@ func validateUpdate(event *models.Event, oldEvent *models.Event) error {
 	return nil
 }
 
-func isNothingToUpdate(event, oldEvent *models.Event) bool {
+// isNothingToUpdate returns true if the new event has neither a changed date
+// nor changed text compared to the existing event.
+func isNothingToUpdate(event *models.Event, oldEvent *models.Event) bool {
 	if !event.Meta.NewDate.IsZero() && !oldEvent.Meta.EventDate.Equal(event.Meta.NewDate) {
 		return false
 	}
@@ -66,6 +74,8 @@ func isNothingToUpdate(event, oldEvent *models.Event) bool {
 	return true
 }
 
+// validateDelete checks whether an event can be deleted.
+// Returns an error if the event does not exist or does not belong to the user.
 func validateDelete(meta *models.Meta, oldEvent *models.Event) error {
 
 	if oldEvent == nil {
@@ -80,6 +90,8 @@ func validateDelete(meta *models.Meta, oldEvent *models.Event) error {
 
 }
 
+// validateGet checks if the request to retrieve events is valid.
+// UserID must be positive and EventDate must be set.
 func validateGet(meta *models.Meta) error {
 
 	if meta.UserID <= 0 {
@@ -94,6 +106,8 @@ func validateGet(meta *models.Meta) error {
 
 }
 
+// validateDate ensures the event date is not in the past and not more than 10 years ahead.
+// Dates are compared in UTC to prevent timezone-related errors.
 func validateDate(date time.Time) error {
 
 	eventUTC := date.UTC().Truncate(24 * time.Hour)
@@ -112,6 +126,7 @@ func validateDate(date time.Time) error {
 
 }
 
+// validateData encapsulates the validation logic for the event's data.
 func validateData(data models.Data) error {
 
 	if len(data.Text) > 500 {
@@ -122,6 +137,8 @@ func validateData(data models.Data) error {
 
 }
 
+// validateIDs validates the user ID and event ID for update or delete operations.
+// Checks include: positive userID, non-empty eventID, and proper UUID format for eventID.
 func validateIDs(userID int, eventID string) error {
 
 	if userID <= 0 {

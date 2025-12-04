@@ -1,3 +1,7 @@
+// Package config provides application configuration loading and default fallback.
+//
+// It uses Viper to read configuration from a config file (config.yaml or other supported formats)
+// and ensures that all critical settings have sensible defaults if missing or empty.
 package config
 
 import (
@@ -7,36 +11,46 @@ import (
 	"github.com/spf13/viper"
 )
 
+// App holds all configuration sections for the application.
 type App struct {
-	Logger  Logger
-	Server  Server
-	Service Service
-	Storage Storage
+	Logger  Logger  // Logger configuration
+	Server  Server  // HTTP server configuration
+	Service Service // Business logic / service configuration
+	Storage Storage // Persistent storage configuration
 }
 
+// Logger contains configuration for the structured logger.
 type Logger struct {
-	LogDir string
-	Debug  bool
+	LogDir string // Directory where logs are stored
+	Debug  bool   // Enables debug logging if true
 }
 
+// Server contains configuration parameters for the HTTP server.
 type Server struct {
-	Port            string
-	ReadTimeout     time.Duration
-	WriteTimeout    time.Duration
-	MaxHeaderBytes  int
-	ShutdownTimeout time.Duration
+	Port            string        // Port to listen on
+	ReadTimeout     time.Duration // Maximum duration for reading a request
+	WriteTimeout    time.Duration // Maximum duration before timing out writes
+	MaxHeaderBytes  int           // Maximum size of request headers in bytes
+	ShutdownTimeout time.Duration // Timeout for graceful server shutdown
 }
 
+// Service contains configuration for the business logic layer.
 type Service struct {
-	MaxEventsPerUser int
+	MaxEventsPerUser int // Maximum number of events a user can create
 }
 
+// Storage contains configuration for the storage layer.
 type Storage struct {
-	ExpectedUsers    int
-	MaxEventsPerUser int
-	MaxEventsPerDay  int
+	ExpectedUsers    int // Expected number of users for preallocation / sizing
+	MaxEventsPerUser int // Maximum events per user in storage
+	MaxEventsPerDay  int // Maximum events per day in storage
 }
 
+// Load reads the configuration from a file and returns an App instance.
+//
+// The configuration file must exist; if it cannot be read, an error is returned.
+// For any fields missing or empty within the file, default values are applied
+// to ensure the application has all required settings.
 func Load() (App, error) {
 
 	viper.AddConfigPath(".")
@@ -62,6 +76,7 @@ func Load() (App, error) {
 
 }
 
+// loggerConfig reads logger configuration from Viper.
 func loggerConfig() Logger {
 	return Logger{
 		LogDir: viper.GetString("app.logger.log_directory"),
@@ -69,6 +84,7 @@ func loggerConfig() Logger {
 	}
 }
 
+// serverConfig reads server configuration from Viper.
 func serverConfig() Server {
 	return Server{
 		Port:            viper.GetString("server.port"),
@@ -79,12 +95,14 @@ func serverConfig() Server {
 	}
 }
 
+// serviceConfig reads service configuration from Viper.
 func serviceConfig() Service {
 	return Service{
 		MaxEventsPerUser: viper.GetInt("service.max_events_per_user"),
 	}
 }
 
+// storageConfig reads storage configuration from Viper.
 func storageConfig() Storage {
 	return Storage{
 		ExpectedUsers:   viper.GetInt("storage.expected_users"),
@@ -92,6 +110,11 @@ func storageConfig() Storage {
 	}
 }
 
+// failsafe fills in default values for missing configuration fields.
+//
+// This ensures the application can still run even if parts of the config file
+// are missing or empty. It prints informative messages for any field that
+// is using a default value.
 func failsafe(logger *Logger, server *Server, service *Service, storage *Storage) {
 
 	if len(viper.AllSettings()) == 0 {

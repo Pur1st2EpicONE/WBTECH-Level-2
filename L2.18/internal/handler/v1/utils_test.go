@@ -68,6 +68,7 @@ func TestBadRequest(t *testing.T) {
 	tests := []error{
 		errs.ErrInvalidJSON,
 		errs.ErrInvalidUserID,
+		errs.ErrInvalidEventID,
 		errs.ErrInvalidDateFormat,
 		errs.ErrEmptyEventText,
 		errs.ErrEventTextTooLong,
@@ -92,7 +93,6 @@ func TestServiceUnavailable(t *testing.T) {
 		errs.ErrNothingToUpdate,
 		errs.ErrEventInPast,
 		errs.ErrEventTooFar,
-		errs.ErrInvalidEventID,
 		errs.ErrUnauthorized,
 	}
 

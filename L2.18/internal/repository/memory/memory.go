@@ -1,3 +1,4 @@
+// Package memory provides an in-memory implementation of the Storage interface.
 package memory
 
 import (
@@ -11,14 +12,21 @@ import (
 	"github.com/google/uuid"
 )
 
+// Storage is an in-memory implementation of the repository.Storage interface.
+// It stores events per user and per date, supports CRUD operations,
+// and keeps auxiliary maps for fast lookup and user event counts.
+//
+// All methods are thread-safe using an internal RWMutex.
 type Storage struct {
-	db             map[int]map[string][]*models.Event
-	eventsByID     map[string]*models.Event
-	userEventCount map[int]int
-	logger         logger.Logger
-	mu             sync.RWMutex
+	db             map[int]map[string][]*models.Event // userID -> date string -> list of events
+	eventsByID     map[string]*models.Event           // eventID -> event pointer
+	userEventCount map[int]int                        // userID -> total number of events
+	logger         logger.Logger                      // logger instance
+	mu             sync.RWMutex                       // protects all maps
 }
 
+// NewStorage creates a new in-memory Storage instance.
+// The initial map capacities are set based on the ExpectedUsers config value.
 func NewStorage(config config.Storage, logger logger.Logger) *Storage {
 	return &Storage{
 		db:             make(map[int]map[string][]*models.Event, config.ExpectedUsers),
@@ -28,6 +36,8 @@ func NewStorage(config config.Storage, logger logger.Logger) *Storage {
 	}
 }
 
+// CreateEvent stores a new event in memory.
+// Generates a unique UUID for the event and updates internal maps and counters.
 func (s *Storage) CreateEvent(event *models.Event) (string, error) {
 
 	s.mu.Lock()
@@ -49,6 +59,8 @@ func (s *Storage) CreateEvent(event *models.Event) (string, error) {
 
 }
 
+// UpdateEvent updates an existing event's data or moves it to a new date.
+// Thread-safe with write lock. Updates are logged.
 func (s *Storage) UpdateEvent(new *models.Event) error {
 
 	s.mu.Lock()
@@ -96,6 +108,8 @@ func (s *Storage) UpdateEvent(new *models.Event) error {
 
 }
 
+// DeleteEvent removes an event from memory and updates counters.
+// Uses write lock for thread safety.
 func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
 	s.mu.Lock()
@@ -131,6 +145,8 @@ func (s *Storage) DeleteEvent(meta *models.Meta) error {
 
 }
 
+// GetEventByID retrieves an event by its ID. Returns nil if not found.
+// Thread-safe using read lock.
 func (s *Storage) GetEventByID(eventID string) *models.Event {
 
 	s.mu.RLock()
@@ -144,12 +160,15 @@ func (s *Storage) GetEventByID(eventID string) *models.Event {
 
 }
 
+// CountUserEvents returns the total number of events for a given user.
 func (s *Storage) CountUserEvents(userID int) (int, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.userEventCount[userID], nil
 }
 
+// GetEvents retrieves all events for a user filtered by period: day, week, or month.
+// Returns empty slice if no events exist for the period.
 func (s *Storage) GetEvents(meta *models.Meta, period models.Period) ([]models.Event, error) {
 
 	s.mu.RLock()
@@ -179,6 +198,10 @@ func (s *Storage) GetEvents(meta *models.Meta, period models.Period) ([]models.E
 
 }
 
+// getEventsForDay returns all events for a specific day for a user.
+// It extracts events from the provided map, keyed by date strings (YYYY-MM-DD),
+// and returns a slice of Event structs. If no events are found for the given day,
+// an empty slice is returned. Thread safety must be ensured by the caller.
 func (s *Storage) getEventsForDay(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	dayEvents, eventsFound := allUserEvents[format(meta.EventDate)]
@@ -195,6 +218,9 @@ func (s *Storage) getEventsForDay(allUserEvents map[string][]*models.Event, meta
 
 }
 
+// getEventsForWeek returns all events for the ISO week containing meta.EventDate for a user.
+// It iterates over all user events, compares their ISO week and year to the target week,
+// and collects matching events. Returns an empty slice if no events are found.
 func (s *Storage) getEventsForWeek(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	var res []models.Event
@@ -217,6 +243,10 @@ func (s *Storage) getEventsForWeek(allUserEvents map[string][]*models.Event, met
 
 }
 
+// getEventsForMonth returns all events for the month containing meta.EventDate for a user.
+// It iterates over all user events and compares the year and month of each event
+// to the target month. Matching events are collected and returned as a slice.
+// Returns an empty slice if no events are found for the month.
 func (s *Storage) getEventsForMonth(allUserEvents map[string][]*models.Event, meta *models.Meta) ([]models.Event, error) {
 
 	var res []models.Event
@@ -243,6 +273,7 @@ func (s *Storage) getEventsForMonth(allUserEvents map[string][]*models.Event, me
 
 }
 
+// Close clears all in-memory data and logs the shutdown.
 func (s *Storage) Close() {
 
 	s.mu.Lock()
@@ -256,10 +287,12 @@ func (s *Storage) Close() {
 
 }
 
+// updateData updates the event's textual data.
 func updateData(current *models.Data, new *models.Data) {
 	current.Text = new.Text
 }
 
+// format formats time.Time as a string in YYYY-MM-DD format.
 func format(date time.Time) string {
 	return date.Format("2006-01-02")
 }
