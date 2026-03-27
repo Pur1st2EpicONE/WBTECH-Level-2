@@ -1,4 +1,4 @@
-.PHONY: all L2.13 test diff_test lint
+.PHONY: all L2.13 test diff_test lint clean
 
 all : L2.13
 
@@ -13,3 +13,6 @@ diff_test:
 
 lint:
 	golangci-lint run ./...
+
+clean:
+	@rm -f cut
