@@ -8,98 +8,86 @@ import (
 	"unicode"
 )
 
+var ErrNoCharacters = errors.New("failed to unpack string — no letters or characters found")
+var ErrDigitWithoutChar = errors.New("failed to unpack string — digit without preceding character")
+
+var strs = []string{"a4bc2d5e", "abcd", "45", "", `qwe\4\5`, `qwe\45`}
+
 func main() {
 
-	fmt.Println(unpack("a4bc2d5"))
-	fmt.Println(unpack(`qwe\4\5`))
-	fmt.Println(unpack(`qwe\45\`))
-	fmt.Println(unpack(`a2bc4\7d!2\\2`))
+	for _, str := range strs {
+		fmt.Println(unpack(str))
+	}
 
 }
 
-// unpack takes a string with run-length encoding and returns its unpacked form.
+// unpack expands a string according to a simple repetition rule.
+// It returns the unpacked string or an error if the format is invalid.
 func unpack(str string) (string, error) {
+
 	if str == "" {
 		return "", nil
 	}
-	_, err := strconv.Atoi(str)
-	if err == nil {
-		return "", errors.New("failed to unpack string — no letters or characters found")
+
+	if _, err := strconv.Atoi(str); err == nil {
+		return "", ErrNoCharacters
 	}
-	var res, num strings.Builder // res — result string, num — buffer for digits
+
+	var res strings.Builder
 	runes := []rune(str)
 	i := 0
+
 	for i < len(runes) {
+
+		var ch rune
 		if runes[i] == '\\' {
-			if i+1 >= len(runes) { // processing single backslash at the very end (treated as is)
+			i++
+			if i >= len(runes) {
 				res.WriteRune('\\')
-				i++
-				continue
+				break
 			}
-			if runes[i+1] != '\\' { // processing single backslash followed by something other than other backslash
-				if i+1 < len(runes) && unicode.IsDigit(runes[i+1]) { // processing escaped digits
-					repeats, err := toInt(runes, &num, i+2)
-					if err != nil {
-						return str, fmt.Errorf("failed to parse number of letter repeats: %v", err)
-					}
-					for range repeats {
-						res.WriteRune(runes[i+1])
-					}
-					i += 2 + num.Len()
-				} else {
-					res.WriteRune(runes[i+1]) // processing escaped characters (they are treated as is)
-					i += 2
-				}
-				continue
-			}
-			repeats, err := toInt(runes, &num, i+2) // processing double backslash that is possibly followed by a repeat count
-			if err != nil {
-				return str, fmt.Errorf("failed to parse number of letter repeats: %v", err)
-			}
-			if num.Len() == 0 { // processing "\\" (just writing one backslash to result string)
-				res.WriteRune('\\')
-				i += 2
-			} else {
-				for range repeats { // processing backslashes with mulitplication (\\3 —> \\\)
-					res.WriteRune('\\')
-				}
-				i += 2 + num.Len()
-			}
-			continue
-		}
-		if !unicode.IsDigit(runes[i]) { // processing regular non-digit characters
-			if i == len(runes)-1 || !unicode.IsDigit(runes[i+1]) || runes[i+1] == '\\' { // if next rune is not a digit just writing it as-is
-				res.WriteRune(runes[i])
-			} else {
-				repeats, err := toInt(runes, &num, i+1) // if next rune is a digit, building the number and repeating the rune N times
-				if err != nil {
-					return str, fmt.Errorf("failed to parse number of letter repeats: %v", err)
-				}
-				for range repeats {
-					res.WriteRune(runes[i])
-				}
-				i += num.Len()
-			}
+			ch = runes[i]
+		} else if unicode.IsDigit(runes[i]) {
+			return "", ErrDigitWithoutChar
+		} else {
+			ch = runes[i]
 		}
 		i++
+
+		count, newI := getRepeatCount(runes, i)
+		i = newI
+
+		for range count {
+			res.WriteRune(ch)
+		}
+
 	}
+
 	return res.String(), nil
+
 }
 
-// toInt extracts a number from the rune slice starting at i (position after the backslash).
-// If no number is found, returns 1 (default repeat count).
-func toInt(runes []rune, num *strings.Builder, i int) (int, error) {
-	num.Reset()
-	for i < len(runes) && unicode.IsDigit(runes[i]) { // processing consecutive digits
+// getRepeatCount reads a decimal number starting at position start in runes
+// and returns the integer value and the next index. If no digit is found,
+// it returns (1, start) – meaning a default repeat count of 1.
+func getRepeatCount(runes []rune, start int) (int, int) {
+
+	if start >= len(runes) || !unicode.IsDigit(runes[start]) {
+		return 1, start
+	}
+
+	var num strings.Builder
+	i := start
+	for i < len(runes) && unicode.IsDigit(runes[i]) {
 		num.WriteRune(runes[i])
 		i++
 	}
-	if num.Len() == 0 { // if no digits found, repeat the character once
-		return 1, nil
-	}
-	repeats, err := strconv.Atoi(num.String())
+
+	count, err := strconv.Atoi(num.String())
 	if err != nil {
-		return 0, fmt.Errorf("atoi failed to convert string to int: %w", err)
+		panic(err) // theoretically impossible
 	}
-	return repeats, nil
+
+	return count, i
+
 }
