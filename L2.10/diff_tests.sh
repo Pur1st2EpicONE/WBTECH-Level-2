@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 SORT_OUTPUT="sort_output"
 MY_SORT_OUTPUT="my_sort_output"
