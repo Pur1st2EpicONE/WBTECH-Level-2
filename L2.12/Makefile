@@ -1,4 +1,4 @@
-.PHONY: all L2.12 test diff_test lint
+.PHONY: all L2.12 test diff_test lint clean
 
 all : L2.12
 
@@ -14,3 +14,6 @@ diff_test:
 
 lint:
 	golangci-lint run ./...
+
+clean:
+	@rm -f grep
